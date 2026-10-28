@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Плантації Бульбуляндії</title>
+<style>
+  :root{
+    --moss:#2f5d3a; --leaf:#4f8a4b; --sprout:#9bc56b; --meadow:#dcebc2;
+    --soil:#6b4a33; --soil-dark:#4d3322; --berry:#d6204a; --berry-dark:#9c1236;
+    --paper:#f6f3df; --ink:#23361f; --gold:#e0a21b; --gold-dark:#9a6a08;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:Georgia,"Palatino Linotype",serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 10%,#b9d98a 0,transparent 40%),
+      radial-gradient(circle at 85% 90%,#8dbd72 0,transparent 45%),
+      linear-gradient(180deg,#cfe6a8,#a6cf84);
+    display:flex;align-items:center;justify-content:center;
+    padding:12px;user-select:none;-webkit-user-select:none;
+  }
+  .farm{
+    width:min(100%,560px);
+    background:var(--paper);
+    border:6px solid var(--soil);
+    border-radius:22px;
+    box-shadow:0 10px 0 var(--soil-dark),0 22px 40px rgba(35,54,31,.35);
+    padding:18px 18px 22px;
+    position:relative;overflow:hidden;
+  }
+  h1{
+    font-size:clamp(1.5rem,6vw,2.2rem);
+    text-align:center;color:var(--moss);
+    letter-spacing:.5px;line-height:1.1;
+  }
+  .sub{text-align:center;font-style:italic;color:var(--leaf);margin:4px 0 12px;font-size:.95rem}
+  .hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px}
+  .hud div{
+    background:var(--meadow);border:2px solid var(--leaf);border-radius:12px;
+    padding:6px 2px;text-align:center;font-size:.68rem;color:var(--moss);
+  }
+  .hud b{display:block;font-size:1.2rem;color:var(--ink);transition:transform .15s}
+  .hud b.bump{transform:scale(1.35)}
+  .hud b.lost{color:var(--berry);transform:scale(.8)}
+  .hud b.danger{color:var(--berry)}
+  .field{
+    position:relative;margin:0 auto;
+    width:min(100%,460px);aspect-ratio:1/1;
+    background:var(--soil);border-radius:16px;padding:8px;
+    border:4px solid var(--soil-dark);
+    box-shadow:inset 0 0 18px rgba(0,0,0,.4);
+  }
+  .grid{display:grid;gap:6px;width:100%;height:100%}
+  .cell{
+    position:relative;border:none;cursor:pointer;
+    border-radius:12px;
+    background:
+      repeating-linear-gradient(90deg,transparent 0 10px,rgba(0,0,0,.08) 10px 12px),
+      linear-gradient(180deg,#8a6444,#74502f);
+    box-shadow:inset 0 -4px 0 rgba(0,0,0,.25);
+    display:flex;align-items:center;justify-content:center;
+    overflow:visible;-webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+  .cell.wrong{animation:shake .3s}
+  @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .bush,.bomb{
+    width:94%;height:94%;pointer-events:none;overflow:visible;
+    filter:drop-shadow(0 3px 2px rgba(0,0,0,.35));
+    animation:grow .16s cubic-bezier(.2,1.6,.4,1) both;
+  }
+  .bomb{width:88%;height:88%}
+  @keyframes grow{from{transform:scale(0) rotate(-12deg)}to{transform:scale(1) rotate(0)}}
+  .bush.picked{animation:pick .25s ease-out forwards}
+  @keyframes pick{to{transform:scale(1.35) translateY(-14px);opacity:0}}
+  .bush.burst{animation:boom .55s ease-out forwards}
+  .bush.burst .drup{fill:url(#gBurst)}
+  @keyframes boom{
+    0%{transform:scale(1);filter:none}
+    25%{transform:scale(1.4);filter:brightness(1.2) saturate(2.5) drop-shadow(0 0 12px #ff1744)}
+    60%{transform:scale(1.7);opacity:.8;filter:saturate(3) hue-rotate(-10deg)}
+    100%{transform:scale(2.1);opacity:0}
+  }
+  .bomb.explode{animation:bombBoom .55s ease-out forwards}
+  @keyframes bombBoom{
+    0%{transform:scale(1);filter:none}
+    30%{transform:scale(1.6);filter:brightness(.8) drop-shadow(0 0 16px #8a3fe0)}
+    100%{transform:scale(2.4);opacity:0;filter:brightness(.3) drop-shadow(0 0 22px #2a0a50)}
+  }
+  .fuse{animation:blink .22s infinite alternate;transform-box:fill-box;transform-origin:center}
+  @keyframes blink{from{opacity:.55;transform:scale(.8)}to{opacity:1;transform:scale(1.25)}}
+  .timer{
+    position:absolute;left:10%;right:10%;bottom:5px;height:5px;border-radius:3px;
+    background:rgba(0,0,0,.3);overflow:hidden;pointer-events:none;
+  }
+  .timer i{display:block;height:100%;background:var(--sprout);transform-origin:left;animation:drain .5s linear forwards}
+  @keyframes drain{from{transform:scaleX(1);background:var(--sprout)}to{transform:scaleX(0);background:var(--berry)}}
+  .spark{
+    position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:50%;
+    background:var(--berry);pointer-events:none;z-index:5;
+    animation:fly .6s ease-out forwards;
+  }
+  @keyframes fly{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+  .flash{animation:flash .4s}
+  @keyframes flash{30%{box-shadow:inset 0 0 0 100vmax rgba(214,32,74,.35)}}
+  .flashBomb{animation:flashBomb .45s}
+  @keyframes flashBomb{30%{box-shadow:inset 0 0 0 100vmax rgba(70,20,120,.5)}}
+
+  /* ---------- Оверлеї ---------- */
+  .overlay{
+    position:absolute;inset:0;z-index:20;
+    background:rgba(246,243,223,.97);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:24px;gap:12px;overflow-y:auto;
+  }
+  .overlay.hidden{display:none}
+  .overlay.scroll{justify-content:flex-start;padding:70px 18px 24px}
+  .overlay h2{font-size:1.7rem;color:var(--moss)}
+  .overlay p{max-width:40ch;line-height:1.45}
+  .overlay.fail h2{color:var(--berry)}
+  .big{font-size:3.2rem;font-weight:bold;color:var(--berry);line-height:1}
+  .stats{display:grid;gap:10px;width:100%;max-width:340px}
+  .stat{background:var(--meadow);border:2px solid var(--leaf);border-radius:14px;padding:10px}
+  .stat small{display:block;color:var(--moss)}
+  .stat strong{font-size:2rem}
+  .earned{font-weight:bold;color:var(--gold-dark);font-size:1.1rem}
+
+  .coin{
+    display:inline-block;width:18px;height:18px;border-radius:50%;vertical-align:-3px;
+    background:radial-gradient(circle at 35% 30%,#ff9bb0,#d6204a 55%,#7d0c2b);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.35),0 1px 2px rgba(0,0,0,.35);
+  }
+  .coinChip{
+    position:absolute;top:12px;right:12px;z-index:3;
+    background:var(--meadow);border:3px solid var(--leaf);border-radius:22px;
+    padding:6px 14px;font-weight:bold;color:var(--ink);box-shadow:0 3px 0 var(--moss);
+    display:flex;gap:7px;align-items:center;
+  }
+  .helpBtn{
+    position:absolute;top:12px;left:12px;z-index:3;width:44px;height:44px;border-radius:50%;
+    font:inherit;font-weight:bold;font-size:1.4rem;cursor:pointer;
+    background:var(--meadow);color:var(--moss);border:3px solid var(--leaf);
+    box-shadow:0 3px 0 var(--moss);
+  }
+  .helpBtn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--moss)}
+
+  /* ---------- Меню-сцена ---------- */
+  .overlay.menu{
+    justify-content:flex-start;padding:66px 20px 0;gap:10px;
+    background:linear-gradient(180deg,#bfe5f5 0%,#eaf5d0 48%,#b6d98a 100%);
+  }
+  .scene{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+  .sun{
+    position:absolute;top:70px;right:56px;width:70px;height:70px;border-radius:50%;
+    background:radial-gradient(circle,#fff6b0 30%,#ffd84a 70%);
+    box-shadow:0 0 0 10px rgba(255,230,100,.35),0 0 40px 18px rgba(255,230,100,.45);
+    animation:sunPulse 4s ease-in-out infinite;
+  }
+  @keyframes sunPulse{50%{transform:scale(1.07)}}
+  .cloud{position:absolute;height:22px;border-radius:20px;background:rgba(255,255,255,.85);filter:blur(.5px)}
+  .cloud::before,.cloud::after{content:"";position:absolute;background:inherit;border-radius:50%}
+  .cloud::before{width:28px;height:28px;left:12px;top:-14px}
+  .cloud::after{width:36px;height:36px;left:34px;top:-20px}
+  .c1{top:140px;width:80px;animation:drift 38s linear infinite}
+  .c2{top:100px;width:60px;animation:drift 52s linear infinite;animation-delay:-20s;opacity:.8}
+  @keyframes drift{from{transform:translateX(-120px)}to{transform:translateX(640px)}}
+  .hills{position:absolute;left:0;bottom:0;width:100%;height:44%}
+  .mb{position:absolute;bottom:3%;aspect-ratio:1/1;transform-origin:50% 95%;animation:sway 3.2s ease-in-out infinite}
+  .mb .bush,.mb .bomb{width:100%;height:100%;animation:none}
+  @keyframes sway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+  .mb.pop{animation:sway 3.2s ease-in-out infinite,peek 2.4s ease-in-out infinite}
+  @keyframes peek{0%,100%{translate:0 6%}50%{translate:0 -3%}}
+
+  .menuTitle,.menuBtns,.records{position:relative;z-index:1}
+  .menuTitle h2{
+    font-size:clamp(2.1rem,9vw,3.1rem);line-height:1;color:var(--moss);letter-spacing:1px;
+    text-shadow:0 3px 0 #fff,0 6px 10px rgba(35,54,31,.25);
+  }
+  .menuTitle h2 + h2{font-size:clamp(1.5rem,6.4vw,2.2rem);margin-top:4px;color:var(--berry-dark)}
+  .menuTitle p{margin:10px auto 0;font-style:italic;color:var(--moss)}
+  .menuBtns{display:flex;flex-direction:column;gap:12px;margin-top:14px;width:min(100%,260px)}
+  .records{
+    margin-top:4px;background:rgba(246,243,223,.9);border:2px solid var(--leaf);border-radius:12px;
+    padding:6px 12px;font-size:.82rem;color:var(--moss);max-width:360px;
+  }
+  button.btn{
+    font:inherit;font-weight:bold;font-size:1.1rem;cursor:pointer;
+    background:var(--leaf);color:#fff;border:none;border-radius:14px;
+    padding:12px 28px;box-shadow:0 5px 0 var(--moss);
+    transition:transform .1s,box-shadow .1s;
+  }
+  button.btn:hover{background:#5a9a55}
+  button.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--moss)}
+  button.btn.play{font-size:1.5rem;padding:14px 28px;background:var(--berry);box-shadow:0 6px 0 var(--berry-dark)}
+  button.btn.play:hover{background:#e5305a}
+  button.btn.play:active{box-shadow:0 1px 0 var(--berry-dark)}
+  button.btn.gold{background:var(--gold);box-shadow:0 5px 0 var(--gold-dark);color:#3a2600}
+  button.btn.gold:hover{background:#efb232}
+  button.btn:disabled{background:#b9b9a5;box-shadow:0 5px 0 #8c8c78;color:#fff;cursor:not-allowed}
+  button.btn.small{font-size:.95rem;padding:8px 14px;box-shadow:0 4px 0 var(--moss)}
+  button.btn.gold.small{box-shadow:0 4px 0 var(--gold-dark)}
+  button.btn.small:disabled{box-shadow:0 4px 0 #8c8c78}
+  button:focus-visible{outline:3px solid #ffb300;outline-offset:3px}
+
+  /* ---------- Допомога та прокачка ---------- */
+  .help{text-align:left;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px;margin:0 auto}
+  .help h2{text-align:center}
+  .help ul{padding-left:20px;line-height:1.45;font-size:.95rem}
+  .help li{margin-bottom:4px}
+  table.tbl{width:100%;border-collapse:collapse;font-size:.8rem;text-align:center}
+  .tbl th{background:var(--leaf);color:#fff;padding:6px 3px;font-weight:bold}
+  .tbl td{background:var(--meadow);padding:6px 3px;border-bottom:2px solid var(--paper)}
+  .help .btn{align-self:center}
+  .note{font-size:.8rem;color:var(--moss);text-align:center}
+  .up{
+    display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;
+    background:var(--meadow);border:2px solid var(--leaf);border-radius:14px;padding:10px 12px;
+  }
+  .up h3{font-size:1.05rem;color:var(--moss)}
+  .up p{font-size:.82rem;line-height:1.35;max-width:none}
+  .up .now{font-size:.8rem;color:var(--gold-dark);font-weight:bold}
+  .pips{display:flex;gap:4px;margin-top:4px}
+  .pip{width:16px;height:10px;border-radius:5px;background:#c3d3a5;border:1px solid var(--leaf)}
+  .pip.on{background:var(--berry);border-color:var(--berry-dark)}
+  .pip.fresh{animation:pipPop .5s ease-out}
+  @keyframes pipPop{0%{transform:scale(.3)}60%{transform:scale(1.6)}100%{transform:scale(1)}}
+  .legend{margin-top:12px;text-align:center;font-size:.9rem;color:var(--moss);min-height:1.3em}
+  @media (prefers-reduced-motion:reduce){
+    .bush,.bush.burst,.bush.picked,.bomb,.bomb.explode,.spark,.cell.wrong,.fuse,
+    .sun,.cloud,.mb,.mb.pop,.pip.fresh{animation-duration:.01s;animation-iteration-count:1}
+  }
+  .nick{width:min(100%,260px);font:inherit;font-size:1.2rem;text-align:center;padding:10px 12px;border:3px solid var(--leaf);border-radius:12px;background:#fff;color:var(--ink);user-select:text;-webkit-user-select:text}
+  .acct{position:relative;z-index:1;font-size:.78rem;color:var(--moss);margin-top:2px;max-width:340px}
+  .alink{font:inherit;font-size:.85rem;background:none;border:none;color:var(--moss);text-decoration:underline;cursor:pointer;padding:2px 4px}
+  .code{width:min(100%,380px);font:.8rem monospace;padding:8px;border:3px solid var(--leaf);border-radius:12px;resize:none;user-select:text;-webkit-user-select:text;word-break:break-all;background:#fff;color:var(--ink)}
+</style>
+</head>
+<body>
+
+<!-- Градієнти (оголошені один раз) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="gDrup" cx="36%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#ff7b98"/><stop offset=".4" stop-color="#e0214f"/><stop offset="1" stop-color="#7d0c2b"/>
+    </radialGradient>
+    <radialGradient id="gDrupDark" cx="36%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#e8456d"/><stop offset=".45" stop-color="#b8153d"/><stop offset="1" stop-color="#650a22"/>
+    </radialGradient>
+    <radialGradient id="gBurst" cx="40%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#ffd0c8"/><stop offset=".4" stop-color="#ff1744"/><stop offset="1" stop-color="#b00000"/>
+    </radialGradient>
+    <radialGradient id="gBlack" cx="36%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#7a6aa8"/><stop offset=".35" stop-color="#34205a"/><stop offset=".75" stop-color="#150a28"/><stop offset="1" stop-color="#05020a"/>
+    </radialGradient>
+    <linearGradient id="gLeaf" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2f6b3a"/><stop offset="1" stop-color="#7ec26a"/>
+    </linearGradient>
+    <linearGradient id="gLeafDark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#244f2d"/><stop offset="1" stop-color="#4f9448"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<main class="farm" id="farm">
+  <h1>Плантації Бульбуляндії</h1>
+  <p class="sub">Збери малину, обережно з ожиною-бомбою!</p>
+
+  <section class="hud" aria-live="polite">
+    <div>Рівень<b id="hLevel">1/3</b></div>
+    <div>Зібрано<b id="hScore">0</b></div>
+    <div>Серія<b id="hStreak">0</b></div>
+    <div>Рекорд серії<b id="hBest">0</b></div>
+    <div>Лопнуло<b id="hLives">0/2</b></div>
+  </section>
+
+  <div class="field" id="field"><div class="grid" id="grid"></div></div>
+  <p class="legend" id="legend"></p>
+
+  <div class="overlay" id="overlay"></div>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- Налаштування рівнів ----------
+  // Час життя куща (мс) лінійно скорочується від "from" до "to" протягом рівня.
+  // maxBurst — скільки разів можна лопнути; "більше" = програш рівня.
+  // bombChance/maxBombs — шанс і максимум ожин-бомб одночасно з кущем.
+  const LEVELS = [
+    { n: 2, count: 8,  from: 450, to: 380, maxBurst: 2, bombChance: 0.30, maxBombs: 1 },
+    { n: 3, count: 10, from: 400, to: 330, maxBurst: 3, bombChance: 0.45, maxBombs: 2 },
+    { n: 5, count: 12, from: 380, to: 300, maxBurst: 5, bombChance: 0.60, maxBombs: 2 }
+  ];
+  const GAP = 350, BURST_GAP = 700, WIN_BONUS = 10;
+
+  // ---------- Прокачка ----------
+  const UPGRADES = [
+    { id: "time",  name: "Сонячна година", costs: [30, 50, 80, 120, 180],
+      desc: "Кущі живуть довше: +15 мс на кожному рівні за покращення.",
+      now: l => `Зараз: +${l * 15} мс` },
+    { id: "lives", name: "Міцне коріння", costs: [60, 120, 220],
+      desc: "Дозволяє лопнути ще на одну ягоду більше на кожному рівні.",
+      now: l => `Зараз: +${l} до ліміту` },
+    { id: "radar", name: "Садові ножиці", costs: [40, 70, 110, 160],
+      desc: "Ожин-бомб стає менше: −15% до шансу їх появи за покращення.",
+      now: l => `Зараз: −${l * 15}% шансу` },
+    { id: "gold",  name: "Золотий урожай", costs: [50, 90, 140, 200, 280],
+      desc: "Більше малинок-монет за врожай: +25% за покращення.",
+      now: l => `Зараз: +${l * 25}% монет` }
+  ];
+
+  // ---------- Збереження ----------
+  const KEY = "bulbulandii_save_v1";
+  const DEF = { coins: 0, up: { time: 0, lives: 0, radar: 0, gold: 0 },
+                best: { pct: 0, avg: null, streak: 0 }, wins: 0, games: 0 };
+  function load() {
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    r = r || {};
+    return { ...DEF, ...r, up: { ...DEF.up, ...(r.up || {}) }, best: { ...DEF.best, ...(r.best || {}) } };
+  }
+  let save = load();
+  // ---------- Акаунти: нік + пароль (зберігаються в цьому браузері) ----------
+  const ACC_KEY = "bulbulandii_accounts_v1";
+  const NICK_RE = /^[\p{L}\p{N} _.\-]{2,16}$/u;
+  const acc = { nick: null, guest: false };           // nick — ключ активного профілю (нижній регістр)
+
+  const norm = r => ({ ...DEF, ...r, up: { ...DEF.up, ...(r.up || {}) }, best: { ...DEF.best, ...(r.best || {}) } });
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function loadAccounts() {
+    try { const r = JSON.parse(localStorage.getItem(ACC_KEY)); if (r && r.users) return r; } catch (e) {}
+    return { users: {}, current: null };
+  }
+  let accounts = loadAccounts();
+  function persistAccounts() { try { localStorage.setItem(ACC_KEY, JSON.stringify(accounts)); } catch (e) {} }
+
+  // Зберігає прогрес у активний профіль (або в гостьове сховище)
+  function persist() {
+    if (acc.nick && accounts.users[acc.nick]) {
+      accounts.users[acc.nick].data = save;
+      persistAccounts();
+    } else {
+      try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {}
+    }
+  }
+
+  // Хешування пароля: PBKDF2 (SHA-256), а якщо браузер не підтримує — запасний варіант
+  const enc = new TextEncoder();
+  const hex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  function weakHash(s) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let r = 0; r < 2000; r++) for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(16).padStart(8, "0") + (h1 >>> 0).toString(16).padStart(8, "0");
+  }
+  async function hashPass(pass, salt, alg) {
+    if (alg === "pbkdf2" && window.crypto && crypto.subtle) {
+      const key = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveBits"]);
+      return hex(await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" }, key, 256));
+    }
+    return weakHash(salt + ":" + pass);
+  }
+
+  function loginAs(k) {
+    acc.nick = k; acc.guest = false; accounts.current = k;
+    save = norm(accounts.users[k].data || {});
+    accounts.users[k].data = save;
+    persistAccounts();
+  }
+  async function register(nick, pass) {
+    const k = nick.toLowerCase();
+    if (accounts.users[k]) return "Такий нік уже зайнятий на цьому пристрої.";
+    const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const alg = (window.crypto && crypto.subtle) ? "pbkdf2" : "weak";
+    accounts.users[k] = { nick, salt, alg, hash: await hashPass(pass, salt, alg), data: norm({}) };
+    loginAs(k);
+    return null;
+  }
+  async function login(nick, pass) {
+    const k = nick.toLowerCase(), u = accounts.users[k];
+    if (!u) return "Профілю з таким ніком немає на цьому пристрої.";
+    if (await hashPass(pass, u.salt, u.alg) !== u.hash) return "Невірний пароль.";
+    loginAs(k);
+    return null;
+  }
+  function logout() {
+    acc.nick = null; acc.guest = false; accounts.current = null;
+    persistAccounts();
+    save = load();
+    showAuth("login");
+  }
+
+  // Код профілю для перенесення між пристроями
+  function exportCode(k) {
+    const bytes = enc.encode(JSON.stringify(accounts.users[k]));
+    return btoa(String.fromCharCode(...bytes));
+  }
+  function importCode(code) {
+    try {
+      const u = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(code.trim()), c => c.charCodeAt(0))));
+      if (!u || !NICK_RE.test(u.nick || "") || !u.salt || !u.hash || !u.data) return null;
+      accounts.users[u.nick.toLowerCase()] = u;
+      persistAccounts();
+      return u.nick;
+    } catch (e) { return null; }
+  }
+
+  // Ефективні параметри рівня з урахуванням прокачки
+  function eff(i) {
+    const b = LEVELS[i], u = save.up;
+    return {
+      n: b.n, count: b.count,
+      from: b.from + 15 * u.time, to: b.to + 15 * u.time,
+      maxBurst: b.maxBurst + u.lives,
+      bombChance: b.bombChance * (1 - 0.15 * u.radar),
+      maxBombs: b.maxBombs
+    };
+  }
+
+  const $ = id => document.getElementById(id);
+  const grid = $("grid"), overlay = $("overlay"), field = $("field"), legend = $("legend");
+  const hLevel = $("hLevel"), hScore = $("hScore"), hStreak = $("hStreak"), hBest = $("hBest"), hLives = $("hLives");
+
+  // ---------- Генерація SVG ----------
+  function berry(cx, cy, s, grad, stroke, hl) {
+    const d = 8 * s, r = 4.9 * s;
+    const rows = [3, 4, 4, 3, 2];
+    let out = "";
+    rows.forEach((cnt, i) => {
+      const y = cy + (i - 2) * d * 0.82;
+      for (let j = 0; j < cnt; j++) {
+        const x = cx + (j - (cnt - 1) / 2) * d;
+        out += `<circle class="drup" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="url(#${grad})" stroke="${stroke}" stroke-width="${(0.5 * s).toFixed(2)}"/>`;
+        out += `<circle cx="${(x - r * .3).toFixed(1)}" cy="${(y - r * .35).toFixed(1)}" r="${(r * .28).toFixed(1)}" fill="#fff" opacity="${hl}"/>`;
+      }
+    });
+    const ty = cy - 2 * d * 0.82 - r * 0.5;
+    let calyx = "";
+    for (let k = 0; k < 5; k++) {
+      const a = -90 + (k - 2) * 38;
+      calyx += `<ellipse cx="0" cy="${(-5 * s).toFixed(1)}" rx="${(1.6 * s).toFixed(1)}" ry="${(5.2 * s).toFixed(1)}" fill="#3f8a45" stroke="#2a5f30" stroke-width=".4" transform="rotate(${a + 90} 0 0)"/>`;
+    }
+    out += `<g transform="translate(${cx} ${ty.toFixed(1)})">${calyx}<circle r="${(1.6 * s).toFixed(1)}" fill="#2a5f30"/></g>`;
+    return out;
+  }
+
+  function leaf(angle, len, wid, dark) {
+    const top = [], bot = [], teeth = 12;
+    for (let i = 0; i <= teeth; i++) {
+      const t = i / teeth, x = len * t;
+      const w = wid * Math.sin(Math.PI * Math.pow(t, 0.8)) * (i % 2 ? 0.78 : 1);
+      top.push(`${x.toFixed(1)},${(-w).toFixed(1)}`);
+      bot.unshift(`${x.toFixed(1)},${w.toFixed(1)}`);
+    }
+    let veins = `<path d="M0 0 L${len} 0" stroke="#1f4a28" stroke-width="1" opacity=".7" fill="none"/>`;
+    for (let i = 2; i < teeth; i += 2) {
+      const x = len * i / teeth, w = wid * Math.sin(Math.PI * Math.pow(i / teeth, 0.8)) * 0.8;
+      veins += `<path d="M${x.toFixed(1)} 0 L${(x + 5).toFixed(1)} ${(-w).toFixed(1)} M${x.toFixed(1)} 0 L${(x + 5).toFixed(1)} ${w.toFixed(1)}" stroke="#1f4a28" stroke-width=".6" opacity=".55" fill="none"/>`;
+    }
+    return `<g transform="translate(50 92) rotate(${angle})">
+      <polygon points="${top.concat(bot).join(" ")}" fill="url(#${dark ? "gLeafDark" : "gLeaf"})" stroke="#1f4a28" stroke-width=".8" stroke-linejoin="round"/>${veins}</g>`;
+  }
+
+  function buildBush() {
+    let s = `<svg class="bush" viewBox="0 0 100 100" aria-hidden="true">`;
+    s += `<ellipse cx="50" cy="95" rx="32" ry="5" fill="rgba(0,0,0,.28)"/>`;
+    [[-168, 36], [-12, 36], [-145, 42], [-35, 42]].forEach(([a, l]) => s += leaf(a, l, 9, true));
+    [[-120, 40], [-60, 40], [-95, 34]].forEach(([a, l]) => s += leaf(a, l, 8.5, false));
+    s += `<g stroke="#3b6a34" stroke-width="2.2" fill="none" stroke-linecap="round">
+      <path d="M50 92 C50 80 50 70 50 50"/>
+      <path d="M50 88 C44 80 36 72 30 58"/>
+      <path d="M50 88 C56 80 64 72 70 58"/></g>`;
+    s += berry(28, 66, 0.78, "gDrupDark", "#5a0a20", 0.7);
+    s += berry(72, 66, 0.78, "gDrupDark", "#5a0a20", 0.7);
+    s += berry(50, 56, 1.02, "gDrup", "#5a0a20", 0.7);
+    return s + `</svg>`;
+  }
+
+  function buildBomb() {
+    let s = `<svg class="bomb" viewBox="0 0 100 100" aria-hidden="true">`;
+    s += `<ellipse cx="50" cy="94" rx="28" ry="5" fill="rgba(0,0,0,.3)"/>`;
+    s += berry(50, 64, 1.18, "gBlack", "#05020a", 0.55);
+    s += `<path d="M50 28 C52 20 58 15 64 10" stroke="#6b4a33" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    s += `<circle class="fuse" cx="65" cy="9" r="5" fill="#ffcf33"/>`;
+    s += `<circle class="fuse" cx="65" cy="9" r="2.4" fill="#ff7a00"/>`;
+    return s + `</svg>`;
+  }
+
+  const BUSH_SVG = buildBush(), BOMB_SVG = buildBomb();
+
+  // ---------- Стан гри ----------
+  let S;
+  function resetState() {
+    if (S) clearTimeout(S.timer);
+    S = { level: 0, idx: 0, collected: 0, total: 0, streak: 0, best: 0, lvBursts: 0, raw: 0, earned: 0,
+          rts: [], cells: [], bombs: [], active: null, t0: 0, timer: null, last: -1, busy: true };
+  }
+
+  function bump(el, cls) {
+    el.classList.remove("bump", "lost");
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 200);
+  }
+
+  function updateHud(ev) {
+    const L = eff(S.level);
+    hLevel.textContent = (S.level + 1) + "/" + LEVELS.length;
+    hScore.textContent = S.collected;
+    hStreak.textContent = S.streak;
+    hBest.textContent = S.best;
+    hLives.textContent = S.lvBursts + "/" + L.maxBurst;
+    hLives.classList.toggle("danger", S.lvBursts >= L.maxBurst);
+    if (ev === "up") bump(hStreak, "bump");
+    if (ev === "reset") bump(hStreak, "lost");
+  }
+
+  function lifeFor(level, idx) {
+    const L = eff(level);
+    const t = L.count > 1 ? idx / (L.count - 1) : 0;
+    return Math.round(L.from + (L.to - L.from) * t);
+  }
+
+  function buildLevel() {
+    const { n } = LEVELS[S.level];
+    grid.innerHTML = "";
+    grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+    S.cells = [];
+    for (let i = 0; i < n * n; i++) {
+      const c = document.createElement("button");
+      c.className = "cell";
+      c.type = "button";
+      c.setAttribute("aria-label", "Грядка " + (i + 1));
+      c.addEventListener("pointerdown", e => { e.preventDefault(); onCell(i); });
+      grid.appendChild(c);
+      S.cells.push(c);
+    }
+    S.idx = 0; S.last = -1; S.active = null; S.bombs = []; S.lvBursts = 0;
+    legend.textContent = `Рівень ${S.level + 1}: сітка ${n}×${n}`;
+    updateHud();
+  }
+
+  function removeBombs(except) {
+    S.bombs.forEach(b => { if (b !== except) S.cells[b].innerHTML = ""; });
+  }
+
+  function spawn() {
+    const L = eff(S.level), size = S.cells.length;
+    let i;
+    do { i = Math.floor(Math.random() * size); } while (i === S.last && size > 1);
+    S.last = i; S.active = i; S.busy = false;
+
+    S.bombs = [];
+    if (Math.random() < L.bombChance) {
+      let k = 1 + (L.maxBombs > 1 && Math.random() < 0.4 ? 1 : 0);
+      const free = [];
+      for (let c = 0; c < size; c++) if (c !== i) free.push(c);
+      while (k-- > 0 && free.length) {
+        const b = free.splice(Math.floor(Math.random() * free.length), 1)[0];
+        S.bombs.push(b);
+        S.cells[b].innerHTML = BOMB_SVG;
+      }
+    }
+
+    const life = lifeFor(S.level, S.idx);
+    legend.textContent = `Рівень ${S.level + 1} (${L.n}×${L.n}) · кущ ${S.idx + 1}/${L.count} · час: ${life} мс`;
+    S.cells[i].innerHTML = BUSH_SVG + `<span class="timer"><i style="animation-duration:${life}ms"></i></span>`;
+    S.t0 = performance.now();
+    S.timer = setTimeout(() => burst(i, null), life);
+  }
+
+  function onCell(i) {
+    if (S.busy || S.active === null) return;
+    if (i === S.active) {
+      collect(i);
+    } else if (S.bombs.includes(i)) {
+      burst(S.active, i);
+    } else {
+      const w = S.cells[i];
+      w.classList.remove("wrong"); void w.offsetWidth; w.classList.add("wrong");
+      burst(S.active, null);
+    }
+  }
+
+  function collect(i) {
+    const rt = performance.now() - S.t0;
+    clearTimeout(S.timer);
+    S.busy = true; S.active = null;
+    S.rts.push(rt);
+    S.collected++; S.total++; S.streak++;
+    S.raw += 1 + (S.streak % 5 === 0 ? 2 : 0);          // 1 монета за ягоду, +2 за кожні 5 у серії
+    if (S.streak > S.best) S.best = S.streak;
+    removeBombs(null);
+    const cell = S.cells[i];
+    const bush = cell.querySelector(".bush");
+    if (bush) bush.classList.add("picked");
+    const t = cell.querySelector(".timer"); if (t) t.remove();
+    updateHud("up");
+    setTimeout(() => { cell.innerHTML = ""; next(); }, GAP);
+  }
+
+  function sparks(cell, colors) {
+    for (let k = 0; k < 16; k++) {
+      const s = document.createElement("span");
+      s.className = "spark";
+      const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 70;
+      s.style.setProperty("--dx", Math.cos(a) * d + "px");
+      s.style.setProperty("--dy", Math.sin(a) * d + "px");
+      s.style.background = colors[k % colors.length];
+      cell.appendChild(s);
+    }
+  }
+
+  function burst(i, bombIdx) {
+    if (S.active === null) return;
+    clearTimeout(S.timer);
+    S.busy = true; S.active = null;
+    S.total++;
+    S.streak = 0;                                   // серія безповоротно скидається
+    S.lvBursts++;
+    const cell = S.cells[i];
+    const bush = cell.querySelector(".bush");
+    if (bush) bush.classList.add("burst");
+    const t = cell.querySelector(".timer"); if (t) t.remove();
+    sparks(cell, ["#d6204a", "#d6204a", "#ff8a80"]);
+    removeBombs(bombIdx);
+    if (bombIdx !== null) {
+      const bc = S.cells[bombIdx], b = bc.querySelector(".bomb");
+      if (b) b.classList.add("explode");
+      sparks(bc, ["#8a3fe0", "#2a1747", "#ffcf33"]);
+    }
+    const fl = bombIdx !== null ? "flashBomb" : "flash";
+    field.classList.remove("flash", "flashBomb"); void field.offsetWidth; field.classList.add(fl);
+    updateHud("reset");
+    setTimeout(() => {
+      cell.innerHTML = "";
+      if (bombIdx !== null) S.cells[bombIdx].innerHTML = "";
+      S.bombs = [];
+      if (S.lvBursts > eff(S.level).maxBurst) showFail(); else next();
+    }, BURST_GAP);
+  }
+
+  function next() {
+    S.idx++;
+    if (S.idx < LEVELS[S.level].count) { spawn(); return; }
+    if (S.level < LEVELS.length - 1) { S.level++; showLevelIntro(); }
+    else showResults();
+  }
+
+  function startLevel() {
+    overlay.classList.add("hidden");
+    buildLevel();
+    S.busy = true;
+    setTimeout(spawn, 700);
+  }
+
+  // Підсумок забігу: монети, рекорди, збереження
+  function finishRun(won) {
+    S.earned = Math.round(S.raw * (1 + 0.25 * save.up.gold)) + (won ? WIN_BONUS : 0);
+    save.coins += S.earned;
+    save.games++;
+    if (S.best > save.best.streak) save.best.streak = S.best;
+    if (won) {
+      save.wins++;
+      const pct = S.total ? Math.round(S.collected / S.total * 100) : 0;
+      if (pct > save.best.pct) save.best.pct = pct;
+      if (S.rts.length) {
+        const avg = Math.round(S.rts.reduce((a, b) => a + b, 0) / S.rts.length);
+        if (save.best.avg === null || avg < save.best.avg) save.best.avg = avg;
+      }
+    }
+    persist();
+  }
+
+  // ---------- Екрани ----------
+  function show(html, cls) {
+    overlay.className = "overlay" + (cls ? " " + cls : "");
+    overlay.innerHTML = html;
+    overlay.scrollTop = 0;
+  }
+
+  function showMenu() {
+    if (!acc.nick && !acc.guest) { showAuth("login"); return; }
+    resetState();
+    grid.innerHTML = "";
+    legend.textContent = "";
+    updateHud();
+    const b = save.best;
+    const rec = save.games
+      ? `Рекорди: врожай ${b.pct}% · реакція ${b.avg === null ? "—" : b.avg + " мс"} · серія ${b.streak}`
+      : "Рекордів ще немає — час збирати врожай!";
+    show(`
+      <div class="scene">
+        <div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div>
+        <svg class="hills" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 18 Q22 2 45 14 T100 10 V40 H0Z" fill="#8dbd72"/>
+          <path d="M0 28 Q25 14 55 25 T100 22 V40 H0Z" fill="#6fa85a"/>
+        </svg>
+        <div class="mb" style="left:2%;width:30%;bottom:2%;animation-delay:-1s">${BUSH_SVG}</div>
+        <div class="mb" style="left:66%;width:32%;bottom:1%;animation-delay:-2s">${BUSH_SVG}</div>
+        <div class="mb" style="left:33%;width:34%;bottom:-2%">${BUSH_SVG}</div>
+        <div class="mb pop" style="left:50%;width:15%;bottom:0%">${BOMB_SVG}</div>
+      </div>
+      <button class="helpBtn" id="helpBtn" aria-label="Допомога" title="Допомога">?</button>
+      <div class="coinChip" title="Малинки"><span class="coin"></span><span>${save.coins}</span></div>
+      <div class="menuTitle">
+        <h2>Плантації</h2><h2>Бульбуляндії</h2>
+        <p>Збери малину. Не чіпай ожину.</p>
+      </div>
+      <div class="menuBtns">
+        <button class="btn play" id="playBtn">Грати</button>
+        <button class="btn gold" id="shopBtn">Прокачка</button>
+      </div>
+      <div class="records">${rec}</div>
+      <div class="acct">${acctLine()}</div>`, "menu");
+    $("playBtn").onclick = () => { S.level = 0; startLevel(); };
+    $("shopBtn").onclick = showShop;
+    $("helpBtn").onclick = showHelp;
+    [["exportBtn", showExport], ["logoutBtn", logout], ["loginBtn", () => showAuth("login")]]
+      .forEach(([id, fn]) => { const el = $(id); if (el) el.onclick = fn; });
+  }
+
+  function showShop(keepScroll, freshId) {
+    const sc = keepScroll === true ? overlay.scrollTop : 0;
+    const cards = UPGRADES.map(u => {
+      const lvl = save.up[u.id], max = u.costs.length, maxed = lvl >= max;
+      const cost = maxed ? 0 : u.costs[lvl];
+      const pips = Array.from({ length: max }, (_, k) =>
+        `<span class="pip${k < lvl ? " on" : ""}${u.id === freshId && k === lvl - 1 ? " fresh" : ""}"></span>`).join("");
+      const btn = maxed
+        ? `<button class="btn small" disabled>Максимум</button>`
+        : `<button class="btn gold small buy" data-id="${u.id}" ${save.coins < cost ? "disabled" : ""}>${cost} <span class="coin"></span></button>`;
+      return `<div class="up">
+        <div><h3>${u.name}</h3><p>${u.desc}</p><div class="now">${u.now(lvl)}</div><div class="pips">${pips}</div></div>
+        ${btn}</div>`;
+    }).join("");
+    show(`
+      <div class="coinChip"><span class="coin"></span><span>${save.coins}</span></div>
+      <div class="help">
+        <h2>Прокачка</h2>
+        <p class="note">Малинки ти отримуєш за зібрані ягоди: 1 за ягоду, +2 за кожні 5 у серії та +${WIN_BONUS} за пройдену гру.</p>
+        ${cards}
+        <button class="btn" id="backBtn">Назад</button>
+      </div>`, "scroll");
+    overlay.scrollTop = sc;
+    overlay.querySelectorAll(".buy").forEach(b => b.onclick = () => {
+      const u = UPGRADES.find(x => x.id === b.dataset.id);
+      const cost = u.costs[save.up[u.id]];
+      if (cost === undefined || save.coins < cost) return;
+      save.coins -= cost; save.up[u.id]++; persist();
+      showShop(true, u.id);
+    });
+    $("backBtn").onclick = showMenu;
+  }
+
+  function showHelp() {
+    const rows = LEVELS.map((_, i) => {
+      const L = eff(i);
+      return `<tr><td>${i + 1}</td><td>${L.n}×${L.n}</td><td>${L.count}</td>
+      <td>${L.from}→${L.to} мс</td><td>${L.maxBurst}</td><td>${Math.round(L.bombChance * 100)}%, до ${L.maxBombs}</td></tr>`;
+    }).join("");
+    show(`
+      <div class="help">
+        <h2>Як грати</h2>
+        <ul>
+          <li>У випадковій грядці з’являється <b>кущ малини</b> — клацни по ньому, поки він не лопнув.</li>
+          <li>Не встиг або клацнув повз — кущ лопається, він більше не дає балів, а <b>серія скидається</b>.</li>
+          <li><b>Ожина — це бомба.</b> Вона з’являється поруч із кущем. Клац по ожині — вибух, кущ втрачений, серія скинута. Якщо її не чіпати, вона зникне сама.</li>
+          <li>На кожному рівні є ліміт: якщо лопнуло <b>більше</b> дозволеного, виходить «Врожай не зібрано».</li>
+          <li>З кожним кущем часу стає трохи менше.</li>
+          <li>За ягоди ти отримуєш малинки й купуєш покращення в «Прокачці». Прогрес зберігається в твоєму профілі (нік і пароль) у цьому браузері; на інший пристрій його можна перенести кодом профілю.</li>
+        </ul>
+        <table class="tbl">
+          <tr><th>Рівень</th><th>Сітка</th><th>Кущів</th><th>Час на кущ</th><th>Можна лопнути</th><th>Бомби</th></tr>
+          ${rows}
+        </table>
+        <p class="note">У таблиці значення з урахуванням твоєї прокачки.</p>
+        <button class="btn" id="backBtn">Назад</button>
+      </div>`, "scroll");
+    $("backBtn").onclick = showMenu;
+  }
+
+  function showLevelIntro() {
+    const L = eff(S.level);
+    show(`
+      <h2>Рівень ${S.level + 1}</h2>
+      <div class="big">${L.n}×${L.n}</div>
+      <p>Кущів: ${L.count}. Час на кущ: від ${L.from} до ${L.to} мс. Можна лопнути: ${L.maxBurst}. Бомби: до ${L.maxBombs}.</p>
+      <p>Серія зараз: ${S.streak}.</p>
+      <button class="btn" id="goBtn">Далі</button>`);
+    $("goBtn").onclick = startLevel;
+  }
+
+  function statsHtml() {
+    const avg = S.rts.length ? Math.round(S.rts.reduce((a, b) => a + b, 0) / S.rts.length) : null;
+    const pct = S.total ? Math.round(S.collected / S.total * 100) : 0;
+    return `
+      <div class="stats">
+        <div class="stat"><small>Середня швидкість реакції</small><strong>${avg === null ? "—" : avg + " мс"}</strong></div>
+        <div class="stat"><small>Зібрано ягід</small><strong>${pct}%</strong> <small>(${S.collected} із ${S.total})</small></div>
+        <div class="stat"><small>Найдовша серія</small><strong>${S.best}</strong></div>
+      </div>
+      <div class="earned">+${S.earned} <span class="coin"></span> малинок</div>`;
+  }
+
+  function showResults() {
+    finishRun(true);
+    show(`<h2>Врожай зібрано!</h2>${statsHtml()}<button class="btn" id="menuBtn">В меню</button>`);
+    $("menuBtn").onclick = showMenu;
+    legend.textContent = "Дякуємо, що доглядаєте Плантації Бульбуляндії!";
+  }
+
+  function showFail() {
+    finishRun(false);
+    const L = eff(S.level);
+    show(`
+      <h2>Врожай не зібрано</h2>
+      <p>На рівні ${S.level + 1} лопнуло більше ${L.maxBurst} ягід — плантація зіпсована.</p>
+      ${statsHtml()}
+      <button class="btn" id="menuBtn">В меню</button>`, "fail");
+    $("menuBtn").onclick = showMenu;
+    legend.textContent = "Спробуй ще — наступного разу вийде краще!";
+  }
+
+  function acctLine() {
+    if (acc.nick) {
+      return `Фермер ${esc(accounts.users[acc.nick].nick)} · <button class="alink" id="exportBtn">перенести</button> · <button class="alink" id="logoutBtn">вийти</button>`;
+    }
+    return `Гість · прогрес лише в цьому браузері · <button class="alink" id="loginBtn">увійти</button>`;
+  }
+
+  function showAuth(tab, msg) {
+    const reg = tab === "register";
+    show(`
+      <h2>${reg ? "Реєстрація" : "Вхід"}</h2>
+      <p>${reg ? "Вигадай нік і пароль — прогрес і прокачка збережуться в цьому профілі." : "Увійди у свій профіль фермера."}</p>
+      <input class="nick" id="nick" maxlength="16" placeholder="Нік" autocomplete="username">
+      <input class="nick" id="pass" type="password" maxlength="64" placeholder="Пароль" autocomplete="${reg ? "new-password" : "current-password"}">
+      ${reg ? `<input class="nick" id="pass2" type="password" maxlength="64" placeholder="Повтори пароль" autocomplete="new-password">` : ""}
+      <p class="note" id="authMsg">${msg ? esc(msg) : ""}</p>
+      <button class="btn play" id="authBtn">${reg ? "Зареєструватися" : "Увійти"}</button>
+      <button class="btn small" id="swapBtn">${reg ? "Уже є профіль? Увійти" : "Створити профіль"}</button>
+      <button class="alink" id="importBtn">У мене є код профілю</button>
+      <button class="alink" id="guestBtn">Грати як гість</button>`, "scroll");
+    const go = async () => {
+      const nick = $("nick").value.trim(), pass = $("pass").value, msgEl = $("authMsg");
+      if (!NICK_RE.test(nick)) { msgEl.textContent = "Нік: 2–16 символів — літери, цифри, пробіл, _ . -"; return; }
+      if (pass.length < 4) { msgEl.textContent = "Пароль має містити щонайменше 4 символи."; return; }
+      if (reg && $("pass2").value !== pass) { msgEl.textContent = "Паролі не збігаються."; return; }
+      $("authBtn").disabled = true;
+      const err = reg ? await register(nick, pass) : await login(nick, pass);
+      if (err) { msgEl.textContent = err; $("authBtn").disabled = false; return; }
+      showMenu();
+    };
+    $("authBtn").onclick = go;
+    overlay.querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") go(); });
+    $("swapBtn").onclick = () => showAuth(reg ? "login" : "register");
+    $("importBtn").onclick = showImport;
+    $("guestBtn").onclick = () => { acc.guest = true; acc.nick = null; save = load(); showMenu(); };
+  }
+
+  function showImport() {
+    show(`
+      <h2>Код профілю</h2>
+      <p>Встав код, який ти скопіював на іншому пристрої.</p>
+      <textarea class="code" id="code" rows="5" placeholder="Вставити код"></textarea>
+      <p class="note" id="authMsg"></p>
+      <button class="btn" id="impBtn">Імпортувати</button>
+      <button class="alink" id="backBtn">Назад</button>`, "scroll");
+    $("impBtn").onclick = () => {
+      const n = importCode($("code").value);
+      if (!n) { $("authMsg").textContent = "Код не підійшов."; return; }
+      showAuth("login", `Профіль «${n}» додано — увійди з його паролем.`);
+    };
+    $("backBtn").onclick = () => showAuth("login");
+  }
+
+  function showExport() {
+    show(`
+      <h2>Перенести профіль</h2>
+      <p>Скопіюй код і встав його на іншому пристрої в розділі «У мене є код профілю». У коді є твій прогрес і захищений пароль, тож не діли ним з іншими.</p>
+      <textarea class="code" id="code" rows="6" readonly>${exportCode(acc.nick)}</textarea>
+      <button class="btn" id="copyBtn">Копіювати</button>
+      <button class="alink" id="backBtn">Назад</button>`, "scroll");
+    $("code").onclick = e => e.target.select();
+    $("copyBtn").onclick = async () => {
+      try { await navigator.clipboard.writeText($("code").value); $("copyBtn").textContent = "Скопійовано"; }
+      catch (e) { $("code").select(); }
+    };
+    $("backBtn").onclick = showMenu;
+  }
+
+  // Автоматичний вхід у профіль, який був активним, і старт
+  if (accounts.current && accounts.users[accounts.current]) loginAs(accounts.current);
+  showMenu();
+})();
+</script>
+</body>
+</html>
