@@ -181,7 +181,7 @@
   }
   .menuTitle h2 + h2{font-size:clamp(1.5rem,6.4vw,2.2rem);margin-top:4px;color:var(--berry-dark)}
   .menuTitle p{margin:10px auto 0;font-style:italic;color:var(--moss)}
-  .menuBtns{display:flex;flex-direction:column;gap:12px;margin-top:14px;width:min(100%,260px)}
+  .menuBtns{display:flex;flex-direction:column;gap:12px;margin-top:14px;width:min(100%,300px)}
   .records{
     margin-top:4px;background:rgba(246,243,223,.9);border:2px solid var(--leaf);border-radius:12px;
     padding:6px 12px;font-size:.82rem;color:var(--moss);max-width:360px;
@@ -236,6 +236,20 @@
   .acct{position:relative;z-index:1;font-size:.78rem;color:var(--moss);margin-top:2px;max-width:340px}
   .alink{font:inherit;font-size:.85rem;background:none;border:none;color:var(--moss);text-decoration:underline;cursor:pointer;padding:2px 4px}
   .code{width:min(100%,380px);font:.8rem monospace;padding:8px;border:3px solid var(--leaf);border-radius:12px;resize:none;user-select:text;-webkit-user-select:text;word-break:break-all;background:#fff;color:var(--ink)}
+  .grid.dense .cell{border-radius:4px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+  .grid.dense .timer{height:3px;bottom:1px;left:6%;right:6%}
+  .menuBtns .row{display:flex;gap:10px}
+  .menuBtns .row .btn{flex:1;padding:10px 8px;font-size:1rem}
+  .switch{display:flex;align-items:center;gap:10px;background:rgba(246,243,223,.92);border:2px solid var(--leaf);
+    border-radius:12px;padding:6px 10px;text-align:left;font-size:.78rem;color:var(--moss);cursor:pointer;line-height:1.25;position:relative}
+  .switch input{position:absolute;opacity:0;pointer-events:none}
+  .switch .sl{flex:none;width:42px;height:24px;border-radius:12px;background:#b9b9a5;position:relative;transition:background .2s}
+  .switch .sl::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+    transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+  .switch input:checked + .sl{background:var(--leaf)}
+  .switch input:checked + .sl::after{transform:translateX(18px)}
+  .switch input:focus-visible + .sl{outline:3px solid #ffb300;outline-offset:2px}
+  .tbl tr.me td{background:#f9e3a8;font-weight:bold}
 </style>
 </head>
 <body>
@@ -269,7 +283,7 @@
   <p class="sub">Збери малину, обережно з ожиною-бомбою!</p>
 
   <section class="hud" aria-live="polite">
-    <div>Рівень<b id="hLevel">1/3</b></div>
+    <div>Рівень<b id="hLevel">1/5</b></div>
     <div>Зібрано<b id="hScore">0</b></div>
     <div>Серія<b id="hStreak">0</b></div>
     <div>Рекорд серії<b id="hBest">0</b></div>
@@ -291,10 +305,26 @@
   // maxBurst — скільки разів можна лопнути; "більше" = програш рівня.
   // bombChance/maxBombs — шанс і максимум ожин-бомб одночасно з кущем.
   const LEVELS = [
-    { n: 2, count: 8,  from: 450, to: 380, maxBurst: 2, bombChance: 0.30, maxBombs: 1 },
-    { n: 3, count: 10, from: 400, to: 330, maxBurst: 3, bombChance: 0.45, maxBombs: 2 },
-    { n: 5, count: 12, from: 380, to: 300, maxBurst: 5, bombChance: 0.60, maxBombs: 2 }
+    { n: 1,  count: 5,  from: 500, to: 500, maxBurst: 2, bombChance: 0,    maxBombs: 0 },  // 0 — розминка 1×1 (необов’язкова)
+    { n: 2,  count: 8,  from: 450, to: 380, maxBurst: 2, bombChance: 0.30, maxBombs: 1 },
+    { n: 3,  count: 10, from: 400, to: 330, maxBurst: 3, bombChance: 0.45, maxBombs: 2 },
+    { n: 5,  count: 12, from: 380, to: 300, maxBurst: 5, bombChance: 0.60, maxBombs: 2 },
+    { n: 8,  count: 14, from: 420, to: 340, maxBurst: 6, bombChance: 0.65, maxBombs: 3 },
+    { n: 16, count: 16, from: 500, to: 400, maxBurst: 8, bombChance: 0.70, maxBombs: 4 }
   ];
+  // Firebase для профілів і рейтингу на GitHub Pages.
+  // Встав сюди firebaseConfig з консолі Firebase (Project settings → Your apps → Web), наприклад:
+  // const FIREBASE_CONFIG = { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." };
+  // Поки значення null, Firebase не використовується.
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBuS_or2x2T2MMHBe_hp8lB0VUJNYj3FU0",
+    authDomain: "raspberrybulbul.firebaseapp.com",
+    projectId: "raspberrybulbul",
+    storageBucket: "raspberrybulbul.firebasestorage.app",
+    messagingSenderId: "1002221531869",
+    appId: "1:1002221531869:web:32b1be9d1caf74ac112134"
+  };
+
   const GAP = 350, BURST_GAP = 700, WIN_BONUS = 10;
 
   // ---------- Прокачка ----------
@@ -316,7 +346,7 @@
   // ---------- Збереження ----------
   const KEY = "bulbulandii_save_v1";
   const DEF = { coins: 0, up: { time: 0, lives: 0, radar: 0, gold: 0 },
-                best: { pct: 0, avg: null, streak: 0 }, wins: 0, games: 0 };
+                best: { pct: 0, avg: null, streak: 0 }, wins: 0, games: 0, warm: false };
   function load() {
     let r = null;
     try { r = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
@@ -324,30 +354,25 @@
     return { ...DEF, ...r, up: { ...DEF.up, ...(r.up || {}) }, best: { ...DEF.best, ...(r.best || {}) } };
   }
   let save = load();
-  // ---------- Акаунти: нік + пароль (зберігаються в цьому браузері) ----------
+  // ---------- Акаунти (нік + пароль) і рейтинг ----------
+  // На сторінці claude.ai профілі лежать у спільному сховищі й доступні з будь-якого пристрою.
+  // Якщо сховище недоступне (файл відкрито окремо, немає входу чи прав на запис), профілі зберігаються лише в цьому браузері.
   const ACC_KEY = "bulbulandii_accounts_v1";
   const NICK_RE = /^[\p{L}\p{N} _.\-]{2,16}$/u;
-  const acc = { nick: null, guest: false };           // nick — ключ активного профілю (нижній регістр)
+  const acc = { nick: null, rec: null, guest: false, server: false, fb: false, syncErr: false };
+  const store = { server: null };                      // { db, canWrite }
+  const srv = () => (store.server && store.server.canWrite ? store.server : null);
 
   const norm = r => ({ ...DEF, ...r, up: { ...DEF.up, ...(r.up || {}) }, best: { ...DEF.best, ...(r.best || {}) } });
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const clone = o => JSON.parse(JSON.stringify(o));
 
   function loadAccounts() {
     try { const r = JSON.parse(localStorage.getItem(ACC_KEY)); if (r && r.users) return r; } catch (e) {}
-    return { users: {}, current: null };
+    return { users: {}, current: null, sessionHash: null };
   }
   let accounts = loadAccounts();
   function persistAccounts() { try { localStorage.setItem(ACC_KEY, JSON.stringify(accounts)); } catch (e) {} }
-
-  // Зберігає прогрес у активний профіль (або в гостьове сховище)
-  function persist() {
-    if (acc.nick && accounts.users[acc.nick]) {
-      accounts.users[acc.nick].data = save;
-      persistAccounts();
-    } else {
-      try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {}
-    }
-  }
 
   // Хешування пароля: PBKDF2 (SHA-256), а якщо браузер не підтримує — запасний варіант
   const enc = new TextEncoder();
@@ -371,36 +396,167 @@
     return weakHash(salt + ":" + pass);
   }
 
-  function loginAs(k) {
-    acc.nick = k; acc.guest = false; accounts.current = k;
-    save = norm(accounts.users[k].data || {});
-    accounts.users[k].data = save;
+  // ---- сховище профілів ----
+  const idOf = nick => "n" + hex(enc.encode(nick.toLowerCase()));   // безпечний id документа
+
+  async function initServer() {
+    try {
+      const cl = window.claude;
+      if (!cl || !cl.use) return;
+      const [db, user] = await Promise.all([cl.use("db"), cl.use("user")]);
+      if (!db) return;
+      const can = user && typeof user.can === "function" ? await user.can("data.write") : null;
+      store.server = { db, canWrite: can !== false };
+    } catch (e) {}
+  }
+
+  // ---- Firebase (Auth + Firestore): нік і пароль для всіх гравців ----
+  const fb = { ok: false };
+  async function initFirebase() {
+    if (!FIREBASE_CONFIG) return;
+    try {
+      const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+      const [appM, authM, fsM] = await Promise.all([
+        import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")]);
+      const app = appM.initializeApp(FIREBASE_CONFIG);
+      fb.auth = authM.getAuth(app); fb.db = fsM.getFirestore(app); fb.a = authM; fb.f = fsM;
+      await fb.auth.authStateReady();
+      fb.ok = true;
+    } catch (e) { fb.ok = false; fb.err = (e && (e.code || e.message)) || "помилка"; }
+  }
+  // нік → службова адреса (справжня пошта не потрібна)
+  async function fbEmail(nick) {
+    const h = hex(await crypto.subtle.digest("SHA-256", enc.encode(nick.toLowerCase())));
+    return "p" + h.slice(0, 32) + "@bulbulandii.game";
+  }
+  const fbRef = uid => fb.f.doc(fb.db, "players", uid);
+
+  async function fbEnter(user, fallbackNick) {
+    let snap = await fb.f.getDoc(fbRef(user.uid));
+    if (!snap.exists() && fallbackNick) {
+      await fb.f.setDoc(fbRef(user.uid), { nick: fallbackNick, data: norm({}) });
+      snap = await fb.f.getDoc(fbRef(user.uid));
+    }
+    if (!snap.exists()) return false;
+    const r = snap.data();
+    acc.nick = String(r.nick).toLowerCase(); acc.guest = false; acc.server = false; acc.fb = true; acc.syncErr = false;
+    save = norm(r.data || {});
+    acc.rec = { nick: r.nick, data: save };
+    return true;
+  }
+  async function fbRegister(nick, pass) {
+    try {
+      const cred = await fb.a.createUserWithEmailAndPassword(fb.auth, await fbEmail(nick), pass);
+      await fb.f.setDoc(fbRef(cred.user.uid), { nick, data: norm({}) });
+      await fbEnter(cred.user, nick);
+      return null;
+    } catch (e) {
+      const c = e && e.code;
+      if (c === "auth/email-already-in-use") return "Такий нік уже зайнятий.";
+      if (c === "auth/weak-password") return "Пароль надто простий: потрібно щонайменше 6 символів.";
+      return "Не вдалося створити профіль (" + (c || "помилка") + ").";
+    }
+  }
+  async function fbLogin(nick, pass) {
+    try {
+      const cred = await fb.a.signInWithEmailAndPassword(fb.auth, await fbEmail(nick), pass);
+      if (!(await fbEnter(cred.user, nick))) return "Профіль не знайдено.";
+      return null;
+    } catch (e) {
+      const c = e && e.code;
+      if (c === "auth/invalid-credential" || c === "auth/user-not-found" || c === "auth/wrong-password") return "Невірний нік або пароль.";
+      if (c === "auth/too-many-requests") return "Забагато спроб. Спробуй трохи пізніше.";
+      return "Помилка входу (" + (c || "невідома") + ").";
+    }
+  }
+  let fbBusy = false, fbDirty = false;
+  async function pushFb() {
+    if (fbBusy) { fbDirty = true; return; }
+    fbBusy = true;
+    try {
+      await fb.f.setDoc(fbRef(fb.auth.currentUser.uid), { nick: acc.rec.nick, data: clone(save) });
+      acc.syncErr = false;
+    } catch (e) { acc.syncErr = true; }
+    fbBusy = false;
+    if (fbDirty) { fbDirty = false; pushFb(); }
+  }
+
+  async function getAcct(nick) {
+    const s = srv();
+    if (s) {
+      const snap = await s.db.doc("accounts/" + idOf(nick)).get();
+      return snap.exists ? clone(snap.data()) : null;
+    }
+    return accounts.users[nick.toLowerCase()] || null;
+  }
+  async function putAcct(rec) {
+    const s = srv();
+    if (s) await s.db.doc("accounts/" + idOf(rec.nick)).set(clone(rec));
+    else { accounts.users[rec.nick.toLowerCase()] = rec; persistAccounts(); }
+  }
+
+  let pushBusy = false, pushDirty = false;
+  async function pushAcct() {
+    if (pushBusy) { pushDirty = true; return; }
+    pushBusy = true;
+    try { await putAcct(acc.rec); acc.syncErr = false; } catch (e) { acc.syncErr = true; }
+    pushBusy = false;
+    if (pushDirty) { pushDirty = false; pushAcct(); }
+  }
+
+  // Зберігає прогрес у активний профіль (або в гостьове сховище)
+  function persist() {
+    if (acc.nick && acc.rec) {
+      acc.rec.data = save;
+      if (acc.fb) pushFb(); else if (acc.server) pushAcct();
+      else { accounts.users[acc.nick] = acc.rec; persistAccounts(); }
+    } else {
+      try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {}
+    }
+  }
+
+  function loginAs(rec) {
+    const k = rec.nick.toLowerCase();
+    acc.nick = k; acc.rec = rec; acc.guest = false; acc.server = !!srv(); acc.syncErr = false;
+    save = norm(rec.data || {});
+    rec.data = save;
+    accounts.current = k; accounts.sessionHash = rec.hash;
+    if (!acc.server) accounts.users[k] = rec;
     persistAccounts();
   }
   async function register(nick, pass) {
-    const k = nick.toLowerCase();
-    if (accounts.users[k]) return "Такий нік уже зайнятий на цьому пристрої.";
+    if (fb.ok) return fbRegister(nick, pass);
+    if (await getAcct(nick)) return "Такий нік уже зайнятий.";
     const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
     const alg = (window.crypto && crypto.subtle) ? "pbkdf2" : "weak";
-    accounts.users[k] = { nick, salt, alg, hash: await hashPass(pass, salt, alg), data: norm({}) };
-    loginAs(k);
+    const rec = { nick, salt, alg, hash: await hashPass(pass, salt, alg), data: norm({}) };
+    try { await putAcct(rec); }
+    catch (e) {
+      if (srv() && e && e.code === "invalid_argument") { store.server.canWrite = false; return register(nick, pass); }
+      return "Не вдалося створити профіль. Спробуй ще раз.";
+    }
+    loginAs(rec);
     return null;
   }
   async function login(nick, pass) {
-    const k = nick.toLowerCase(), u = accounts.users[k];
-    if (!u) return "Профілю з таким ніком немає на цьому пристрої.";
-    if (await hashPass(pass, u.salt, u.alg) !== u.hash) return "Невірний пароль.";
-    loginAs(k);
+    if (fb.ok) return fbLogin(nick, pass);
+    const rec = await getAcct(nick);
+    if (!rec) return "Профілю з таким ніком не знайдено.";
+    if (await hashPass(pass, rec.salt, rec.alg) !== rec.hash) return "Невірний пароль.";
+    loginAs(rec);
     return null;
   }
   function logout() {
-    acc.nick = null; acc.guest = false; accounts.current = null;
+    if (acc.fb) { try { fb.a.signOut(fb.auth); } catch (e) {} }
+    acc.fb = false;
+    acc.nick = null; acc.rec = null; acc.guest = false; acc.server = false;
+    accounts.current = null; accounts.sessionHash = null;
     persistAccounts();
     save = load();
     showAuth("login");
   }
 
-  // Код профілю для перенесення між пристроями
+  // Код профілю (лише для локального режиму) — перенесення між пристроями вручну
   function exportCode(k) {
     const bytes = enc.encode(JSON.stringify(accounts.users[k]));
     return btoa(String.fromCharCode(...bytes));
@@ -414,6 +570,31 @@
       return u.nick;
     } catch (e) { return null; }
   }
+
+  // ---- рейтинг ----
+  async function listPlayers() {
+    const rows = [];
+    const add = (id, r) => {
+      const d = norm(r.data || {});
+      rows.push({ id, nick: r.nick, pct: d.best.pct, avg: d.best.avg, streak: d.best.streak, wins: d.wins, games: d.games });
+    };
+    if (fb.ok) {
+      const snap = await fb.f.getDocs(fb.f.query(fb.f.collection(fb.db, "players"), fb.f.limit(200)));
+      snap.forEach(d => { const r = d.data(); if (r && r.nick) add(d.id, r); });
+      return { rows, me: acc.fb && fb.auth.currentUser ? fb.auth.currentUser.uid : null, shared: true };
+    }
+    if (store.server) {
+      const snap = await store.server.db.collection("accounts").limit(200).get();
+      snap.docs.forEach(d => { const r = d.data(); if (r && r.nick) add(d.id, r); });
+      return { rows, me: acc.nick && acc.server ? idOf(acc.nick) : null, shared: true };
+    }
+    Object.entries(accounts.users).forEach(([k, u]) => add(k, u));
+    return { rows, me: acc.nick, shared: false };
+  }
+  const rankSort = (a, b) =>
+    ((b.pct || 0) - (a.pct || 0)) ||
+    ((a.avg == null ? 1e9 : a.avg) - (b.avg == null ? 1e9 : b.avg)) ||
+    ((b.streak || 0) - (a.streak || 0));
 
   // Ефективні параметри рівня з урахуванням прокачки
   function eff(i) {
@@ -515,7 +696,7 @@
 
   function updateHud(ev) {
     const L = eff(S.level);
-    hLevel.textContent = (S.level + 1) + "/" + LEVELS.length;
+    hLevel.textContent = S.level + "/" + (LEVELS.length - 1);
     hScore.textContent = S.collected;
     hStreak.textContent = S.streak;
     hBest.textContent = S.best;
@@ -536,6 +717,8 @@
     grid.innerHTML = "";
     grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
     grid.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+    grid.classList.toggle("dense", n >= 8);
+    grid.style.gap = n >= 8 ? "2px" : "";
     S.cells = [];
     for (let i = 0; i < n * n; i++) {
       const c = document.createElement("button");
@@ -547,7 +730,7 @@
       S.cells.push(c);
     }
     S.idx = 0; S.last = -1; S.active = null; S.bombs = []; S.lvBursts = 0;
-    legend.textContent = `Рівень ${S.level + 1}: сітка ${n}×${n}`;
+    legend.textContent = `Рівень ${S.level}: сітка ${n}×${n}`;
     updateHud();
   }
 
@@ -563,7 +746,7 @@
 
     S.bombs = [];
     if (Math.random() < L.bombChance) {
-      let k = 1 + (L.maxBombs > 1 && Math.random() < 0.4 ? 1 : 0);
+      let k = 1; while (k < L.maxBombs && Math.random() < 0.4) k++;
       const free = [];
       for (let c = 0; c < size; c++) if (c !== i) free.push(c);
       while (k-- > 0 && free.length) {
@@ -574,7 +757,7 @@
     }
 
     const life = lifeFor(S.level, S.idx);
-    legend.textContent = `Рівень ${S.level + 1} (${L.n}×${L.n}) · кущ ${S.idx + 1}/${L.count} · час: ${life} мс`;
+    legend.textContent = `Рівень ${S.level} (${L.n}×${L.n}) · кущ ${S.idx + 1}/${L.count} · час: ${life} мс`;
     S.cells[i].innerHTML = BUSH_SVG + `<span class="timer"><i style="animation-duration:${life}ms"></i></span>`;
     S.t0 = performance.now();
     S.timer = setTimeout(() => burst(i, null), life);
@@ -720,15 +903,19 @@
       </div>
       <div class="menuBtns">
         <button class="btn play" id="playBtn">Грати</button>
-        <button class="btn gold" id="shopBtn">Прокачка</button>
+        <div class="row"><button class="btn gold" id="shopBtn">Прокачка</button><button class="btn" id="rankBtn">Рейтинг</button></div>
+        <label class="switch"><input type="checkbox" id="warm"><span class="sl"></span><span><b>Рівень 0 · розминка</b><br>1×1, 500 мс, без бомб</span></label>
       </div>
       <div class="records">${rec}</div>
       <div class="acct">${acctLine()}</div>`, "menu");
-    $("playBtn").onclick = () => { S.level = 0; startLevel(); };
+    $("playBtn").onclick = () => { S.level = save.warm ? 0 : 1; startLevel(); };
     $("shopBtn").onclick = showShop;
     $("helpBtn").onclick = showHelp;
-    [["exportBtn", showExport], ["logoutBtn", logout], ["loginBtn", () => showAuth("login")]]
+    [["rankBtn", showRank], ["exportBtn", showExport], ["logoutBtn", logout], ["loginBtn", () => showAuth("login")]]
       .forEach(([id, fn]) => { const el = $(id); if (el) el.onclick = fn; });
+    const w = $("warm");
+    w.checked = !!save.warm;
+    w.onchange = () => { save.warm = w.checked; persist(); };
   }
 
   function showShop(keepScroll, freshId) {
@@ -767,7 +954,7 @@
   function showHelp() {
     const rows = LEVELS.map((_, i) => {
       const L = eff(i);
-      return `<tr><td>${i + 1}</td><td>${L.n}×${L.n}</td><td>${L.count}</td>
+      return `<tr><td>${i === 0 ? "0 (розминка)" : i}</td><td>${L.n}×${L.n}</td><td>${L.count}</td>
       <td>${L.from}→${L.to} мс</td><td>${L.maxBurst}</td><td>${Math.round(L.bombChance * 100)}%, до ${L.maxBombs}</td></tr>`;
     }).join("");
     show(`
@@ -779,6 +966,7 @@
           <li><b>Ожина — це бомба.</b> Вона з’являється поруч із кущем. Клац по ожині — вибух, кущ втрачений, серія скинута. Якщо її не чіпати, вона зникне сама.</li>
           <li>На кожному рівні є ліміт: якщо лопнуло <b>більше</b> дозволеного, виходить «Врожай не зібрано».</li>
           <li>З кожним кущем часу стає трохи менше.</li>
+          <li>Рівень 0 — необов’язкова розминка (1×1, 500 мс, без бомб): вмикається перемикачем у меню. Рівні 4 і 5 — сітки 8×8 та 16×16.</li>
           <li>За ягоди ти отримуєш малинки й купуєш покращення в «Прокачці». Прогрес зберігається в твоєму профілі (нік і пароль) у цьому браузері; на інший пристрій його можна перенести кодом профілю.</li>
         </ul>
         <table class="tbl">
@@ -794,9 +982,9 @@
   function showLevelIntro() {
     const L = eff(S.level);
     show(`
-      <h2>Рівень ${S.level + 1}</h2>
+      <h2>Рівень ${S.level}</h2>
       <div class="big">${L.n}×${L.n}</div>
-      <p>Кущів: ${L.count}. Час на кущ: від ${L.from} до ${L.to} мс. Можна лопнути: ${L.maxBurst}. Бомби: до ${L.maxBombs}.</p>
+      <p>Кущів: ${L.count}. Час на кущ: від ${L.from} до ${L.to} мс. Можна лопнути: ${L.maxBurst}. ${L.maxBombs ? "Бомби: до " + L.maxBombs + "." : "Бомб немає."}</p>
       <p>Серія зараз: ${S.streak}.</p>
       <button class="btn" id="goBtn">Далі</button>`);
     $("goBtn").onclick = startLevel;
@@ -826,7 +1014,7 @@
     const L = eff(S.level);
     show(`
       <h2>Врожай не зібрано</h2>
-      <p>На рівні ${S.level + 1} лопнуло більше ${L.maxBurst} ягід — плантація зіпсована.</p>
+      <p>На рівні ${S.level} лопнуло більше ${L.maxBurst} ягід — плантація зіпсована.</p>
       ${statsHtml()}
       <button class="btn" id="menuBtn">В меню</button>`, "fail");
     $("menuBtn").onclick = showMenu;
@@ -835,39 +1023,48 @@
 
   function acctLine() {
     if (acc.nick) {
-      return `Фермер ${esc(accounts.users[acc.nick].nick)} · <button class="alink" id="exportBtn">перенести</button> · <button class="alink" id="logoutBtn">вийти</button>`;
+      const nm = esc(acc.rec.nick);
+      if (acc.fb) return `Фермер ${nm} · профіль у хмарі${acc.syncErr ? " (не синхронізовано)" : ""} · <button class="alink" id="logoutBtn">вийти</button>`;
+      return acc.server
+        ? `Фермер ${nm} · профіль на сервері${acc.syncErr ? " (не синхронізовано)" : ""} · <button class="alink" id="logoutBtn">вийти</button>`
+        : `Фермер ${nm} · лише в цьому браузері · <button class="alink" id="exportBtn">перенести</button> · <button class="alink" id="logoutBtn">вийти</button>`;
     }
     return `Гість · прогрес лише в цьому браузері · <button class="alink" id="loginBtn">увійти</button>`;
   }
 
   function showAuth(tab, msg) {
     const reg = tab === "register";
+    const shared = fb.ok || !!srv();
     show(`
       <h2>${reg ? "Реєстрація" : "Вхід"}</h2>
       <p>${reg ? "Вигадай нік і пароль — прогрес і прокачка збережуться в цьому профілі." : "Увійди у свій профіль фермера."}</p>
+      <p class="note">${shared ? "Профілі спільні для всіх гравців і пристроїв." : "Сервер недоступний: профіль зберігається лише в цьому браузері." + (FIREBASE_CONFIG && fb.err ? " (Firebase: " + esc(fb.err) + ")" : "")}</p>
       <input class="nick" id="nick" maxlength="16" placeholder="Нік" autocomplete="username">
       <input class="nick" id="pass" type="password" maxlength="64" placeholder="Пароль" autocomplete="${reg ? "new-password" : "current-password"}">
       ${reg ? `<input class="nick" id="pass2" type="password" maxlength="64" placeholder="Повтори пароль" autocomplete="new-password">` : ""}
       <p class="note" id="authMsg">${msg ? esc(msg) : ""}</p>
       <button class="btn play" id="authBtn">${reg ? "Зареєструватися" : "Увійти"}</button>
       <button class="btn small" id="swapBtn">${reg ? "Уже є профіль? Увійти" : "Створити профіль"}</button>
-      <button class="alink" id="importBtn">У мене є код профілю</button>
+      ${shared ? "" : `<button class="alink" id="importBtn">У мене є код профілю</button>`}
       <button class="alink" id="guestBtn">Грати як гість</button>`, "scroll");
     const go = async () => {
       const nick = $("nick").value.trim(), pass = $("pass").value, msgEl = $("authMsg");
       if (!NICK_RE.test(nick)) { msgEl.textContent = "Нік: 2–16 символів — літери, цифри, пробіл, _ . -"; return; }
-      if (pass.length < 4) { msgEl.textContent = "Пароль має містити щонайменше 4 символи."; return; }
+      const minPass = fb.ok ? 6 : 4;
+      if (pass.length < minPass) { msgEl.textContent = "Пароль має містити щонайменше " + minPass + " символів."; return; }
       if (reg && $("pass2").value !== pass) { msgEl.textContent = "Паролі не збігаються."; return; }
       $("authBtn").disabled = true;
-      const err = reg ? await register(nick, pass) : await login(nick, pass);
+      let err;
+      try { err = reg ? await register(nick, pass) : await login(nick, pass); }
+      catch (e) { err = "Помилка зв’язку із сервером. Спробуй ще раз."; }
       if (err) { msgEl.textContent = err; $("authBtn").disabled = false; return; }
       showMenu();
     };
     $("authBtn").onclick = go;
     overlay.querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") go(); });
     $("swapBtn").onclick = () => showAuth(reg ? "login" : "register");
-    $("importBtn").onclick = showImport;
-    $("guestBtn").onclick = () => { acc.guest = true; acc.nick = null; save = load(); showMenu(); };
+    if ($("importBtn")) $("importBtn").onclick = showImport;
+    $("guestBtn").onclick = () => { acc.guest = true; acc.nick = null; acc.rec = null; acc.server = false; save = load(); showMenu(); };
   }
 
   function showImport() {
@@ -901,9 +1098,52 @@
     $("backBtn").onclick = showMenu;
   }
 
-  // Автоматичний вхід у профіль, який був активним, і старт
-  if (accounts.current && accounts.users[accounts.current]) loginAs(accounts.current);
-  showMenu();
+  async function showRank() {
+    show(`<h2>Рейтинг</h2><p class="note">Завантажуємо…</p><button class="alink" id="backBtn">Назад</button>`, "scroll");
+    $("backBtn").onclick = showMenu;
+    let data, err = "";
+    try {
+      if (acc.fb) { acc.rec.data = save; await pushFb(); }
+      else if (acc.server && acc.rec) { acc.rec.data = save; await pushAcct(); }   // свіжий результат — у рейтинг
+      data = await listPlayers();
+    } catch (e) {
+      data = { rows: [], me: null, shared: false };
+      err = "Не вдалося завантажити рейтинг.";
+    }
+    const rows = data.rows.filter(r => r.games > 0).sort(rankSort).slice(0, 50);
+    const notes = ["Місця: за найкращим відсотком зібраного врожаю, далі за швидкістю реакції та серією."];
+    if (!data.shared) notes.push("Тут лише профілі цього пристрою: спільний рейтинг працює на сторінці claude.ai.");
+    else if (!fb.ok && !srv()) notes.push("Твій результат не потрапить у спільний рейтинг: потрібен доступ Contributor.");
+    if (err) notes.push(err);
+    const medal = i => ["🥇", "🥈", "🥉"][i] || (i + 1);
+    const body = rows.map((r, i) => `<tr class="${r.id === data.me ? "me" : ""}"><td>${medal(i)}</td><td>${esc(r.nick || "—")}</td>`
+      + `<td>${r.wins ? r.pct + "%" : "—"}</td><td>${r.avg == null ? "—" : r.avg + " мс"}</td><td>${r.streak || 0}</td></tr>`).join("");
+    show(`
+      <div class="help">
+        <h2>Рейтинг</h2>
+        ${rows.length
+          ? `<table class="tbl"><tr><th>#</th><th>Гравець</th><th>Врожай</th><th>Реакція</th><th>Серія</th></tr>${body}</table>`
+          : `<p class="note">Поки що нікого. Пройди гру — і потрапиш у рейтинг!</p>`}
+        <p class="note">${notes.map(esc).join(" ")}</p>
+        <button class="btn" id="backBtn">Назад</button>
+      </div>`, "scroll");
+    $("backBtn").onclick = showMenu;
+  }
+
+  // Старт: перевіряємо сервер (до 6 с), автоматично входимо в профіль, який був активним
+  (async () => {
+    show(`<h2>Заходимо на плантацію…</h2><p>Перевіряємо сервер.</p>`);
+    await Promise.race([Promise.all([initServer(), initFirebase()]), new Promise(r => setTimeout(r, 8000))]);
+    try {
+      if (fb.ok && fb.auth.currentUser) await fbEnter(fb.auth.currentUser);
+      const k = fb.ok ? null : accounts.current;
+      if (k) {
+        const rec = await getAcct(k);
+        if (rec && rec.hash === accounts.sessionHash) loginAs(rec);
+      }
+    } catch (e) {}
+    showMenu();
+  })();
 })();
 </script>
 </body>
