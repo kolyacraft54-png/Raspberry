@@ -281,11 +281,13 @@
   .admin button.danger{background:#b3203f}
   .admin .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
   .admin label{display:flex;flex-direction:column;font-size:11px;gap:2px}
-  .screamer{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center}
-  .screamer svg{width:min(92vw,92vh);animation:scare 3.4s ease-out forwards}
-  @keyframes scare{0%{transform:scale(.15)}10%{transform:scale(1)}100%{transform:scale(1.18)}}
+  .screamer{position:fixed;inset:0;z-index:200;background:radial-gradient(circle,#7a1230 0,#1c0210 75%);display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .screamer svg{width:min(88vw,88vh);animation:scare 3.6s ease-out forwards}
+  .sdrop{position:absolute;left:50%;top:50%;border-radius:50%;background:#d6204a;box-shadow:inset -3px -3px 0 rgba(0,0,0,.25);animation:sdrop 1.4s ease-out forwards}
+  @keyframes sdrop{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+  @keyframes scare{0%{transform:scale(.1) rotate(-10deg)}10%{transform:scale(1.08) rotate(5deg)}18%{transform:scale(.96) rotate(-4deg)}28%{transform:scale(1) rotate(2deg)}100%{transform:scale(1.1) rotate(0)}}
   .screamer button{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:50%;border:2px solid #fff;background:#222;color:#fff;font-size:1.3rem;cursor:pointer}
-  @media (prefers-reduced-motion:reduce){.screamer svg{animation:none}}
+  @media (prefers-reduced-motion:reduce){.screamer svg{animation:none}.sdrop{display:none}}
 </style>
 </head>
 <body>
@@ -319,7 +321,7 @@
   <p class="sub">Збери малину, обережно з ожиною-бомбою!</p>
 
   <section class="hud" aria-live="polite">
-    <div>Рівень<b id="hLevel">1/5</b></div>
+    <div>Рівень<b id="hLevel">1/10</b></div>
     <div>Зібрано<b id="hScore">0</b></div>
     <div>Серія<b id="hStreak">0</b></div>
     <div>Рекорд серії<b id="hBest">0</b></div>
@@ -344,9 +346,14 @@
     { n: 1,  count: 5,  from: 500, to: 500, maxBurst: 2, bombChance: 0,    maxBombs: 0 },  // 0 — розминка 1×1 (необов’язкова)
     { n: 2,  count: 8,  from: 450, to: 380, maxBurst: 2, bombChance: 0.30, maxBombs: 1 },
     { n: 3,  count: 10, from: 400, to: 330, maxBurst: 3, bombChance: 0.45, maxBombs: 2 },
+    { n: 4,  count: 10, from: 400, to: 320, maxBurst: 4, bombChance: 0.50, maxBombs: 2 },
     { n: 5,  count: 12, from: 380, to: 300, maxBurst: 5, bombChance: 0.60, maxBombs: 2 },
+    { n: 6,  count: 12, from: 400, to: 320, maxBurst: 5, bombChance: 0.60, maxBombs: 3 },
     { n: 8,  count: 14, from: 420, to: 340, maxBurst: 6, bombChance: 0.65, maxBombs: 3 },
-    { n: 16, count: 16, from: 500, to: 400, maxBurst: 8, bombChance: 0.70, maxBombs: 4 }
+    { n: 10, count: 14, from: 440, to: 350, maxBurst: 7, bombChance: 0.68, maxBombs: 4 },
+    { n: 12, count: 15, from: 470, to: 370, maxBurst: 8, bombChance: 0.70, maxBombs: 4 },
+    { n: 16, count: 16, from: 500, to: 400, maxBurst: 8, bombChance: 0.70, maxBombs: 4 },
+    { n: 16, count: 20, from: 420, to: 330, maxBurst: 9, bombChance: 0.75, maxBombs: 5 }   // 10 — «Пекло»
   ];
   // Firebase для профілів і рейтингу на GitHub Pages.
   // Встав сюди firebaseConfig з консолі Firebase (Project settings → Your apps → Web), наприклад:
@@ -361,58 +368,84 @@
     appId: "1:1002221531869:web:32b1be9d1caf74ac112134"
   };
 
-  const GAP = 350, BURST_GAP = 700, WIN_BONUS = 10;
+  const GAP = 350, BURST_GAP = 700, WIN_BONUS = 25;
 
   // ---------- Прокачка ----------
   const UPGRADES = [
-    { id: "time", name: "Сонячна година", short: "Час", costs: [30, 50, 80, 120, 180], req: [],
+    { id: "time", name: "Сонячна година", short: "Час", costs: [60, 100, 160, 240, 360], req: [],
       icon: `<path d="M0-11V-8M0 8V11M-11 0H-8M8 0H11M-8-8l2 2M6 6l2 2M8-8l-2 2M-6 6l-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle r="5" fill="currentColor"/>`,
       desc: "Кущі живуть довше: +15 мс на кожному рівні за покращення.", now: l => `Зараз: +${l * 15} мс` },
-    { id: "lives", name: "Міцне коріння", short: "Коріння", costs: [60, 120, 220], req: [],
+    { id: "lives", name: "Міцне коріння", short: "Коріння", costs: [120, 240, 440], req: [],
       icon: `<path d="M0 9C-12 0-9-9-4.5-9C-2-9 0-7 0-5C0-7 2-9 4.5-9C9-9 12 0 0 9Z" fill="currentColor"/>`,
       desc: "Дозволяє лопнути ще на одну ягоду більше на кожному рівні.", now: l => `Зараз: +${l} до ліміту` },
-    { id: "price", name: "Мішок малинок", short: "Ціна", costs: [25, 45, 75], req: [],
+    { id: "price", name: "Мішок малинок", short: "Ціна", costs: [50, 90, 150], req: [],
       icon: `<circle r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle r="5.5" fill="currentColor"/>`,
       desc: "Збільшує базову вартість ягоди: +1 малинка за кожну зібрану ягоду за рівень покращення.", now: l => `Зараз: ${1 + l} малинок за ягоду` },
-    { id: "radar", name: "Садові ножиці", short: "Ножиці", costs: [40, 70, 110, 160], req: [["lives", 1]],
+    { id: "radar", name: "Садові ножиці", short: "Ножиці", costs: [80, 140, 220, 320], req: [["lives", 1]],
       icon: `<circle cx="-6" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M-4.5 4L5-10M4.5 4L-5-10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`,
       desc: "Ожин-бомб стає менше: −15% до шансу їх появи за покращення.", now: l => `Зараз: −${l * 15}% шансу` },
-    { id: "gold", name: "Золотий урожай", short: "Урожай", costs: [50, 90, 140, 200, 280], req: [["price", 1]],
+    { id: "gold", name: "Золотий урожай", short: "Урожай", costs: [100, 180, 280, 400, 560], req: [["price", 1]],
       icon: `<polygon points="0,-11 3.2,-3.6 11,-3.4 4.8,1.6 7,9.5 0,5 -7,9.5 -4.8,1.6 -11,-3.4 -3.2,-3.6" fill="currentColor"/>`,
       desc: "Більше малинок за гру: +25% до всіх нагород за покращення.", now: l => `Зараз: +${l * 25}% малинок` },
-    { id: "spawn", name: "Магічний кристал", short: "Кристал", costs: [80, 140, 220, 320, 450], req: [["time", 1], ["price", 1]],
+    { id: "spawn", name: "Магічний кристал", short: "Кристал", costs: [160, 280, 440, 640, 900], req: [["time", 1], ["price", 1]],
       icon: `<polygon points="0,-11 8,-3 0,11 -8,-3" fill="currentColor"/><path d="M-8-3H8M0-11L-3-3 0 11 3-3Z" stroke="#fff" stroke-width="1" fill="none" opacity=".6"/>`,
       desc: "Підвищує шанс рідкісних ягід: синьої малини (+4%) і золотої ожини (+0,6%) за покращення.", now: l => `Зараз: синя ${Math.round((0.25 + 0.04 * l) * 100)}%, золота ${(3 + 0.6 * l).toFixed(1)}%` },
-    { id: "streak", name: "Серійний бонус", short: "Серія", costs: [70, 120, 200], req: [["price", 2]],
+    { id: "streak", name: "Серійний бонус", short: "Серія", costs: [140, 240, 400], req: [["price", 2]],
       icon: `<polygon points="3,-11 -6,2 -1,2 -3,11 6,-2 1,-2" fill="currentColor"/>`,
       desc: "Більше малинок за кожні 5 ягід у серії: +1 за покращення.", now: l => `Зараз: +${2 + l} за кожні 5 у серії` },
-    { id: "winb", name: "Кубок врожаю", short: "Кубок", costs: [60, 110, 180], req: [["gold", 1]],
+    { id: "winb", name: "Кубок врожаю", short: "Кубок", costs: [120, 220, 360], req: [["gold", 1]],
       icon: `<path d="M-6-9H6V-3A6 6 0 0 1-6-3Z" fill="currentColor"/><path d="M-6-7H-10A4 4 0 0 0-6 0M6-7H10A4 4 0 0 1 6 0M0 3V8M-5 10H5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>`,
-      desc: "Більший бонус за пройдену гру: +5 малинок за покращення.", now: l => `Зараз: +${10 + 5 * l} за перемогу` },
-    { id: "shield", name: "Щит від ожини", short: "Щит", costs: [90, 170, 260], req: [["radar", 1]],
+      desc: "Більший бонус за пройдену гру: +5 малинок за покращення.", now: l => `Зараз: +${25 + 5 * l} за перемогу` },
+    { id: "shield", name: "Щит від ожини", short: "Щит", costs: [180, 340, 520], req: [["radar", 1]],
       icon: `<path d="M0-11L9-7V0C9 6 4 10 0 11C-4 10-9 6-9 0V-7Z" fill="currentColor"/>`,
       desc: "Клік по бомбі не рахується в ліміт лопнутих: стільки разів на рівні, який рівень покращення.", now: l => `Зараз: ${l} на рівень` },
-    { id: "second", name: "Другий шанс", short: "Шанс", costs: [100, 180, 300], req: [["lives", 2]],
+    { id: "second", name: "Другий шанс", short: "Шанс", costs: [200, 360, 600], req: [["lives", 2]],
       icon: `<path d="M9-3A9 9 0 1 0 3 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><polygon points="10,-10 10,-1 1,-1" fill="currentColor"/>`,
       desc: "Кущ, який лопнув сам через таймер, не рахується в ліміт: стільки разів на рівні, який рівень покращення.", now: l => `Зараз: ${l} на рівень` },
-    { id: "gsense", name: "Золоте чуття", short: "Чуття", costs: [120, 200, 320], req: [["spawn", 1]],
+    { id: "gsense", name: "Золоте чуття", short: "Чуття", costs: [240, 400, 640], req: [["spawn", 1]],
       icon: `<path d="M-11 0Q0-10 11 0Q0 10-11 0Z" fill="none" stroke="currentColor" stroke-width="2"/><circle r="3.6" fill="currentColor"/>`,
       desc: "Золота ожина живе довше: +120 мс за покращення.", now: l => `Зараз: +${l * 120} мс` },
-    { id: "bluetm", name: "Синя роса", short: "Роса", costs: [90, 150, 240], req: [["spawn", 1]],
+    { id: "bluetm", name: "Синя роса", short: "Роса", costs: [180, 300, 480], req: [["spawn", 1]],
       icon: `<path d="M0-11C6-3 9 1 9 4A9 9 0 0 1-9 4C-9 1-6-3 0-11Z" fill="currentColor"/>`,
-      desc: "Синя малина живе довше: +80 мс за покращення.", now: l => `Зараз: +${l * 80} мс` }
+      desc: "Синя малина живе довше: +80 мс за покращення.", now: l => `Зараз: +${l * 80} мс` },
+    { id: "slow", name: "Повільний годинник", short: "Годинник", costs: [150, 260, 420], req: [["time", 2]],
+      icon: `<polygon points="-7,-10 7,-10 0,0" fill="currentColor"/><polygon points="-7,10 7,10 0,0" fill="currentColor" opacity=".55"/>`,
+      desc: "Час на кущ скорочується повільніше протягом рівня: на 25% менше за покращення.", now: l => `Зараз: скорочення −${l * 25}%` },
+    { id: "chain", name: "Ланцюг ягід", short: "Ланцюг", costs: [200, 360, 600], req: [["streak", 1]],
+      icon: `<rect x="-11" y="-5" width="13" height="10" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="-2" y="-5" width="13" height="10" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/>`,
+      desc: "Довга серія приносить більше: +1 малинка за кожну ягоду на кожні 10 очок серії за покращення.", now: l => `Зараз: +${l} за кожні 10 у серії` },
+    { id: "heal", name: "Лікувальний ґрунт", short: "Ґрунт", costs: [260, 460, 720], req: [["second", 1]],
+      icon: `<path d="M-3-10H3V-3H10V3H3V10H-3V3H-10V-3H-3Z" fill="currentColor"/>`,
+      desc: "Збір ягід лікує плантацію: кожні 8 (6, 4) зібраних ягід на рівні повертають одну лопнуту.", now: l => l ? `Зараз: кожні ${10 - 2 * l} ягід` : "Зараз: вимкнено" },
+    { id: "rescue", name: "Рятівне коло", short: "Коло", costs: [500, 900], req: [["heal", 1]],
+      icon: `<circle r="9" fill="none" stroke="currentColor" stroke-width="4"/><path d="M-6.5-6.5L-3-3M6.5-6.5L3-3M-6.5 6.5L-3 3M6.5 6.5L3 3" stroke="#fff" stroke-width="3"/>`,
+      desc: "Якщо ліміт лопнутих перевищено, рівень не програно: стільки разів за гру, який рівень покращення.", now: l => `Зараз: ${l} за гру` },
+    { id: "lucky", name: "Щасливий день", short: "Щастя", costs: [220, 400, 640], req: [["winb", 1]],
+      icon: `<circle cx="-4.5" cy="-4.5" r="4.5" fill="currentColor"/><circle cx="4.5" cy="-4.5" r="4.5" fill="currentColor"/><circle cx="-4.5" cy="4.5" r="4.5" fill="currentColor"/><circle cx="4.5" cy="4.5" r="4.5" fill="currentColor"/><path d="M0 4V11" stroke="currentColor" stroke-width="2"/>`,
+      desc: "5% за покращення, що зібрана ягода принесе подвійну нагороду.", now: l => `Зараз: ${l * 5}% шансу` },
+    { id: "pctb", name: "Відсоток урожаю", short: "Відсоток", costs: [180, 320, 520], req: [["winb", 1]],
+      icon: `<circle cx="-5" cy="-5" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="5" cy="5" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7-9L-7 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>`,
+      desc: "Бонус за перемогу залежить від відсотка зібраного: +0,5 малинки за кожен відсоток за покращення.", now: l => `Зараз: +${l * 0.5} за 1%` },
+    { id: "gift", name: "Золотий дощ", short: "Дощ", costs: [280, 480, 760], req: [["gsense", 1]],
+      icon: `<rect x="-9" y="-3" width="18" height="12" fill="currentColor"/><rect x="-10" y="-8" width="20" height="6" fill="currentColor"/><path d="M0-8V9" stroke="#fff" stroke-width="2"/>`,
+      desc: "Кожна зібрана золота ожина додатково дає +20 малинок за покращення.", now: l => `Зараз: +${l * 20} за золоту` },
+    { id: "gentle", name: "М’який вибух", short: "М’яко", costs: [300, 520], req: [["shield", 1]],
+      icon: `<path d="M-8 6A5 5 0 0 1-8-3A6 6 0 0 1 3-6A6 6 0 0 1 9 2A4 4 0 0 1 8 6Z" fill="currentColor"/>`,
+      desc: "Пропущена золота ожина коштує менше: штраф −1 ягода за покращення (замість трьох).", now: l => `Зараз: штраф ${3 - l} ягоди` }
   ];
   const lv = id => (save.up && save.up[id]) || 0;
   const reqOk = u => (u.req || []).every(([id, n]) => lv(id) >= n);
   const blueChance = () => 0.25 + 0.04 * lv("spawn");
   const goldChance = () => 0.03 + 0.006 * lv("spawn");
-  const TREE = { time: [70, 50], price: [210, 50], lives: [350, 50], spawn: [70, 150], gold: [210, 150], streak: [280, 150],
-                 radar: [350, 150], second: [420, 150], gsense: [70, 250], bluetm: [140, 250], winb: [210, 250], shield: [350, 250] };
+  const TREE = { time: [70, 50], price: [210, 50], lives: [350, 50],
+                 spawn: [70, 150], slow: [140, 150], gold: [210, 150], streak: [280, 150], radar: [350, 150], second: [420, 150],
+                 gsense: [70, 250], bluetm: [140, 250], winb: [210, 250], chain: [280, 250], shield: [350, 250], heal: [420, 250],
+                 gift: [70, 350], pctb: [140, 350], lucky: [210, 350], gentle: [350, 350], rescue: [420, 350] };
   let shopSel = "time";
 
   // ---------- Збереження ----------
   const KEY = "bulbulandii_save_v1";
-  const DEF = { coins: 0, up: { time: 0, lives: 0, radar: 0, gold: 0, price: 0, spawn: 0, streak: 0, winb: 0, shield: 0, second: 0, gsense: 0, bluetm: 0 },
+  const DEF = { coins: 0, up: { time: 0, lives: 0, radar: 0, gold: 0, price: 0, spawn: 0, streak: 0, winb: 0, shield: 0, second: 0, gsense: 0, bluetm: 0, slow: 0, chain: 0, heal: 0, rescue: 0, lucky: 0, pctb: 0, gift: 0, gentle: 0 },
                 best: { pct: 0, avg: null, streak: 0 }, wins: 0, games: 0, warm: false, golden: 0 };
   function load() {
     let r = null;
@@ -780,6 +813,7 @@
     S = { level: 0, idx: 0, collected: 0, total: 0, streak: 0, best: 0, lvBursts: 0, raw: 0, earned: 0,
           golden: 0, kind: "red", flags: [], moves: [], clicks: [], holds: [], noMove: 0, nClicks: 0, line: 0, fast: 0,
           shield: 0, second: 0, downT: null, downType: "", sus: false, verdict: [],
+          rescue: lv("rescue"), life: 500, clickTs: 0, lvCollected: 0, pending: 0,
           rts: [], cells: [], bombs: [], active: null, t0: 0, timer: null, last: -1, busy: true };
   }
 
@@ -805,7 +839,7 @@
   function lifeFor(level, idx) {
     const L = eff(level);
     const t = L.count > 1 ? idx / (L.count - 1) : 0;
-    return Math.round(L.from + (L.to - L.from) * t);
+    return Math.round(L.from + (L.to - L.from) * t * (1 - 0.25 * lv("slow")));
   }
 
   function buildLevel() {
@@ -834,7 +868,7 @@
       grid.appendChild(trap);
     }
     S.idx = 0; S.last = -1; S.active = null; S.bombs = []; S.lvBursts = 0;
-    S.shield = lv("shield"); S.second = lv("second");
+    S.shield = lv("shield"); S.second = lv("second"); S.lvCollected = 0;
     legend.textContent = `Рівень ${S.level}: сітка ${n}×${n}`;
     updateHud();
   }
@@ -871,8 +905,8 @@
     if (S.kind === "blue") life += 80 * lv("bluetm");
     legend.textContent = `Рівень ${S.level} (${L.n}×${L.n}) · кущ ${S.idx + 1}/${L.count} · час: ${life} мс`;
     S.cells[i].innerHTML = dynBerry(S.kind) + `<span class="timer"><i style="animation-duration:${life}ms"></i></span>`;
-    S.t0 = performance.now(); S.moves = [];
-    S.timer = setTimeout(() => burst(i, null, true), life);
+    S.t0 = performance.now(); S.moves = []; S.life = life;
+    S.timer = setTimeout(() => burst(i, null, true), life + 100);   // запас на доставку події кліку
   }
 
   function onCell(i) {
@@ -889,9 +923,8 @@
   }
 
   function collect(i) {
-    const rt = performance.now() - S.t0;
+    const rt = Math.max(0, Math.min(S.life + 40, (S.clickTs || performance.now()) - S.t0));   // час за міткою самого кліку
     analyzeMove();
-    if (rt < 60 && ++S.fast >= 3) flag("too_fast");
     clearTimeout(S.timer);
     S.busy = true; S.active = null;
     S.rts.push(rt);
@@ -899,7 +932,11 @@
     S.collected += w; S.total += w;
     const prev = S.streak; S.streak += w;
     S.raw += w * (1 + lv("price")) + (Math.floor(S.streak / 5) - Math.floor(prev / 5)) * (2 + lv("streak"));
-    if (S.kind === "gold") S.golden++;
+    if (S.kind === "gold") { S.golden++; S.raw += 20 * lv("gift"); }
+    S.raw += lv("chain") * Math.floor(S.streak / 10);
+    if (Math.random() < 0.05 * lv("lucky")) S.raw += w * (1 + lv("price"));
+    S.lvCollected++;
+    if (lv("heal") && S.lvBursts > 0 && S.lvCollected % (10 - 2 * lv("heal")) === 0) S.lvBursts--;
     if (S.streak > S.best) S.best = S.streak;
     removeBombs(null);
     const cell = S.cells[i];
@@ -929,7 +966,7 @@
     const gk = S.kind === "gold";
     S.total += gk ? 3 : 1;                          // пропущена золота ожина = 3 втрачені ягоди
     S.streak = 0;                                   // серія безповоротно скидається
-    let pen = gk ? 3 : 1;
+    let pen = gk ? 3 - lv("gentle") : 1;
     if (bombIdx !== null && S.shield > 0) { S.shield--; pen = 0; }            // щит від ожини
     else if (bombIdx === null && timedOut && S.second > 0) { S.second--; pen = 0; }   // другий шанс (лише за таймером)
     S.lvBursts += pen;
@@ -951,7 +988,10 @@
       cell.innerHTML = "";
       if (bombIdx !== null) S.cells[bombIdx].innerHTML = "";
       S.bombs = [];
-      if (S.lvBursts > eff(S.level).maxBurst) showFail(); else next();
+      if (S.lvBursts > eff(S.level).maxBurst) {
+        if (S.rescue > 0) { S.rescue--; S.lvBursts = eff(S.level).maxBurst; updateHud(); next(); }   // рятівне коло
+        else showFail();
+      } else next();
     }, BURST_GAP);
   }
 
@@ -971,17 +1011,22 @@
 
   // Підсумок забігу: монети, рекорди, збереження
   function finishRun(won) {
-    S.verdict = judgeRun();
-    S.sus = S.verdict.length > 0;
-    if (S.sus) { S.earned = 0; reportFlags(S.verdict); return; }         // підозріла автоматизація — забіг не зараховується
-    S.earned = Math.round(S.raw * (1 + 0.25 * lv("gold"))) + (won ? WIN_BONUS + 5 * lv("winb") : 0);
+    const v = judgeRun();
+    S.verdict = [...v.hard, ...v.soft];
+    S.sus = v.held;                                   // «на перевірці»: нагороду вирішує адміністратор
+    const pct = S.total ? Math.round(S.collected / S.total * 100) : 0;
+    const coins = Math.round(S.raw * (1 + 0.25 * lv("gold")))
+      + (won ? WIN_BONUS + 5 * lv("winb") + Math.round(pct * 0.5 * lv("pctb")) : 0);
+    S.pending = coins;
+    if (S.verdict.length) { logFlag(v, coins, pct, won); reportFlags(S.verdict); }
+    if (S.sus) { S.earned = 0; return; }
+    S.earned = coins;
     save.coins += S.earned;
     save.games++;
     save.golden = (save.golden || 0) + S.golden;
     if (S.best > save.best.streak) save.best.streak = S.best;
     if (won) {
       save.wins++;
-      const pct = S.total ? Math.round(S.collected / S.total * 100) : 0;
       if (pct > save.best.pct) save.best.pct = pct;
       if (S.rts.length) {
         const avg = Math.round(S.rts.reduce((a, b) => a + b, 0) / S.rts.length);
@@ -992,16 +1037,24 @@
   }
 
   // ---------- Захист від ботів ----------
-  // Стан гри (S, save) живе в замиканні цієї функції й не доступний через window.
+  // Жорсткі сигнали (програмні кліки, пастка) відправляють забіг на перевірку адміністратору.
+  // М’які сигнали лише логуються; забіг на перевірку йде, якщо їх два й більше. Тривалість натискання не оцінюється:
+  // тап по трекпаду та точність таймера в Firefox дають надто короткі значення в звичайних гравців.
   function flag(name) { if (S && S.flags && !S.flags.includes(name)) S.flags.push(name); }
 
   function guardClick(e, i) {
     e.preventDefault();
     if (!e.isTrusted) { flag("synthetic"); return; }       // програмні кліки (element.click(), dispatchEvent)
     const now = performance.now();
+    const ts = e.timeStamp > 1e12 ? now : e.timeStamp;     // момент самого натискання, а не обробки події
     S.clicks = S.clicks.filter(x => now - x < 1000); S.clicks.push(now);
-    if (S.clicks.length > 12) flag("rate");                // нелюдська частота кліків
-    S.downT = now; S.downType = e.pointerType || "";
+    if (S.clicks.length > 25) flag("rate");
+    if (S.active !== null && !S.busy) {
+      const dt = ts - S.t0;
+      if (dt < 80) return;                                 // клік «наперед» (до появи ягоди) не рахується
+      if (dt > S.life + 40) return;                        // запізнився: ягода вже лопається
+    }
+    S.clickTs = ts; S.downT = ts; S.downType = e.pointerType || "";
     onCell(i);
   }
 
@@ -1014,19 +1067,34 @@
     let path = 0;
     for (let k = 1; k < m.length; k++) path += Math.hypot(m[k][0] - m[k - 1][0], m[k][1] - m[k - 1][1]);
     const disp = Math.hypot(m[m.length - 1][0] - m[0][0], m[m.length - 1][1] - m[0][1]);
-    if (m.length >= 5 && path > 80 && disp / path > 0.997) S.line++;     // ідеально пряма лінія
+    if (m.length >= 8 && path > 120 && disp / path > 0.9995) S.line++;   // ідеально пряма лінія
   }
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
 
-  // Підсумкова оцінка забігу (поріги консервативні, щоб не карати людей)
+  function runDetails() {
+    return { clicks: S.nClicks, noMove: S.noMove, straight: S.line, rtN: S.rts.length,
+      rtMean: S.rts.length ? Math.round(mean(S.rts)) : null,
+      rtSd: S.rts.length > 1 ? Math.round(sd(S.rts) * 10) / 10 : null,
+      level: S.level, collected: S.collected, total: S.total };
+  }
   function judgeRun() {
-    const f = new Set(S.flags);
-    if (S.nClicks >= 12 && S.noMove / S.nClicks >= 0.9) f.add("no_move");
-    if (S.nClicks >= 8 && S.line / S.nClicks >= 0.6) f.add("straight");
-    if (S.rts.length >= 10 && sd(S.rts) < 4) f.add("rt_jitter");        // надто однакові реакції
-    if (S.holds.length >= 10 && (mean(S.holds) < 8 || sd(S.holds) < 1.2)) f.add("hold");   // тривалість натискання
-    return [...f];
+    const hard = S.flags.filter(f => f === "synthetic" || f === "honeypot");
+    const soft = S.flags.filter(f => f === "rate");
+    if (S.nClicks >= 15 && S.noMove / S.nClicks >= 0.95) soft.push("no_move");
+    if (S.nClicks >= 15 && S.line / S.nClicks >= 0.8) soft.push("straight");
+    if (S.rts.length >= 15 && sd(S.rts) < 3) soft.push("rt_jitter");
+    return { hard, soft, held: hard.length > 0 || soft.length >= 2 };
+  }
+  // Запис про прапорець для адміністратора: причина, деталі й сума, яку можна повернути
+  async function logFlag(v, coins, pct, won) {
+    if (!acc.fb || !fb.auth.currentUser) return;
+    try {
+      const F = fb.f;
+      await F.addDoc(F.collection(fb.db, "flags"), {
+        uid: fb.auth.currentUser.uid, nick: acc.rec.nick, ts: Date.now(), reasons: [...v.hard, ...v.soft],
+        held: v.held, coins, pct, won: !!won, details: runDetails(), resolved: false });
+    } catch (e) {}
   }
 
   // ---------- Екрани ----------
@@ -1078,6 +1146,10 @@
     [["importOldBtn", showOldImport], ["rankBtn", showRank], ["exportBtn", showExport], ["logoutBtn", logout], ["loginBtn", () => showAuth("login")]]
       .forEach(([id, fn]) => { const el = $(id); if (el) el.onclick = fn; });
     { const mt = overlay.querySelector(".menuTitle"); if (mt) mt.onclick = adminTap; }
+    if (acc.fb && Date.now() - (acc.grantAt || 0) > 4000) {
+      acc.grantAt = Date.now();
+      checkGrants().then(d => { if (d && overlay.querySelector(".menuTitle")) { showMenu(); acc.grantMsg = null; } });   // не перериваємо гру, якщо вже почалася
+    }
     const w = $("warm");
     w.checked = !!save.warm;
     w.onchange = () => { save.warm = w.checked; persist(); };
@@ -1119,7 +1191,7 @@
       <div class="coinChip"><span class="coin"></span><span>${save.coins}</span></div>
       <div class="help">
         <h2>Дерево прокачки</h2>
-        <div class="tree"><svg viewBox="0 0 470 300" role="img" aria-label="Дерево прокачки">${edges.join("")}${nodes.join("")}</svg></div>
+        <div class="tree"><svg viewBox="0 0 470 400" role="img" aria-label="Дерево прокачки">${edges.join("")}${nodes.join("")}</svg></div>
         <div class="tdetail">
           <h3>${u.name} · ${L}/${max}</h3>
           <p>${u.desc}</p>
@@ -1157,7 +1229,7 @@
           <li><b>Ожина — це бомба.</b> Вона з’являється поруч із кущем. Клац по ожині — вибух, кущ втрачений, серія скинута. Якщо її не чіпати, вона зникне сама.</li>
           <li>На кожному рівні є ліміт: якщо лопнуло <b>більше</b> дозволеного, виходить «Врожай не зібрано».</li>
           <li>З кожним кущем часу стає трохи менше.</li>
-          <li>Рівень 0 — необов’язкова розминка (1×1, 500 мс, без бомб): вмикається перемикачем у меню. Рівні 4 і 5 — сітки 8×8 та 16×16.</li>
+          <li>Рівень 0 — необов’язкова розминка (1×1, 500 мс, без бомб): вмикається перемикачем у меню. Далі йдуть рівні 1–10: від 2×2 до 16×16.</li>
           <li>Рідкісні ягоди (з рівня 1): <b>синя малина</b> дає як 3 червоні (+3 до серії), <b>золота ожина</b> — 10 балів і +10 до серії, але якщо її пропустити, це 3 втрачені ягоди.</li>
           <li>Захист від ботів: програмні кліки, надто рівні рухи й підозріло однакові реакції не зараховуються.</li>
           <li>Адміністратор бачить IP-адресу та відбиток браузера лише для інформації й безпеки (бани за IP не видаються) і може показати гравцеві «скрімер» — страшну картинку зі звуком.</li>
@@ -1193,7 +1265,7 @@
         <div class="stat"><small>Зібрано ягід</small><strong>${pct}%</strong> <small>(${S.collected} із ${S.total})</small></div>
         <div class="stat"><small>Найдовша серія</small><strong>${S.best}</strong></div>
       </div>
-      ${S.sus ? `<p class="note">Забіг не зараховано: виявлено підозрілу автоматизацію.</p>` : ""}
+      ${S.sus ? `<p class="note">Забіг на перевірці: система побачила підозрілі ознаки. Адміністратор перегляне причину й, якщо це помилка, поверне малинки (очікується ${S.pending}).</p>` : ""}
       ${S.golden ? `<div class="earned">Золотих ожин: ${S.golden}</div>` : ""}
       <div class="earned">+${S.earned} <span class="coin"></span> малинок</div>`;
   }
@@ -1218,6 +1290,10 @@
   }
 
   function acctLine() {
+    const gm = acc.grantMsg ? `<br><b>${esc(acc.grantMsg)}</b>` : "";
+    return acctLine0() + gm;
+  }
+  function acctLine0() {
     if (acc.nick) {
       const nm = esc(acc.rec.nick);
       if (acc.fb) return `Фермер ${nm} · профіль у хмарі${acc.syncErr ? " (не синхронізовано)" : ""} · <button class="alink" id="importOldBtn">старий прогрес</button> · <button class="alink" id="logoutBtn">вийти</button>`;
@@ -1423,14 +1499,24 @@
     if (document.querySelector(".screamer")) return;
     const d = document.createElement("div");
     d.className = "screamer";
-    d.innerHTML = `<svg viewBox="0 0 200 200" aria-hidden="true">
-      <ellipse cx="100" cy="104" rx="70" ry="88" fill="#cfd2c4"/>
-      <path d="M52 40L62 62M148 40L138 62M100 18V44M70 150L84 168M130 150L116 168" stroke="#555" stroke-width="2" fill="none"/>
-      <ellipse cx="68" cy="82" rx="22" ry="28" fill="#050505"/><ellipse cx="132" cy="82" rx="22" ry="28" fill="#050505"/>
-      <circle cx="68" cy="86" r="5" fill="#d00"/><circle cx="132" cy="86" r="5" fill="#d00"/>
-      <path d="M46 150Q100 190 154 150Q100 128 46 150Z" fill="#120000"/>
-      <path d="M58 150L64 164L70 148L78 168L86 148L94 170L100 148L106 170L114 148L122 168L130 148L136 164L142 150" fill="#e9e9d8" stroke="#222" stroke-width="1"/>
+    d.innerHTML = `<svg viewBox="0 0 200 215" aria-hidden="true">
+      ${berry(100, 108, 3.4, "gDrup", "#5a0a20", 0.7)}
+      <ellipse cx="78" cy="94" rx="15" ry="18" fill="#fff" stroke="#3a0010" stroke-width="2"/>
+      <ellipse cx="122" cy="94" rx="15" ry="18" fill="#fff" stroke="#3a0010" stroke-width="2"/>
+      <circle cx="84" cy="98" r="7" fill="#111"/><circle cx="116" cy="98" r="7" fill="#111"/>
+      <circle cx="86" cy="95" r="2.2" fill="#fff"/><circle cx="118" cy="95" r="2.2" fill="#fff"/>
+      <path d="M58 70L92 82L90 90L56 78Z" fill="#3a0010"/><path d="M142 70L108 82L110 90L144 78Z" fill="#3a0010"/>
+      <path d="M62 126Q100 176 138 126Q100 138 62 126Z" fill="#3a0010"/>
+      <path d="M68 130L74 142L80 133L88 146L94 135L100 148L106 135L112 146L120 133L126 142L132 130" fill="#fff" stroke="#3a0010" stroke-width="1.2"/>
+      <ellipse cx="100" cy="158" rx="14" ry="8" fill="#ff7f9c"/>
+      <text x="100" y="206" text-anchor="middle" font-size="34" font-weight="900" fill="#fff" stroke="#d6204a" stroke-width="5" paint-order="stroke" font-family="Georgia,serif">БУУУ!</text>
     </svg><button type="button" aria-label="Закрити" style="display:none">✕</button>`;
+    for (let k = 0; k < 18; k++) {                              // бризки малинового соку
+      const s = document.createElement("span"), a = Math.random() * Math.PI * 2, r = 25 + Math.random() * 38, sz = 10 + Math.random() * 18;
+      s.className = "sdrop";
+      s.style.cssText = `width:${sz}px;height:${sz}px;--dx:${Math.cos(a) * r}vmin;--dy:${Math.sin(a) * r}vmin;animation-delay:${Math.random() * 0.25}s`;
+      d.appendChild(s);
+    }
     document.body.appendChild(d);
     let ac = null;
     const onKey = e => { if (e.key === "Escape") close(); };
@@ -1438,21 +1524,25 @@
     document.addEventListener("keydown", onKey);
     const btn = d.querySelector("button");
     btn.onclick = close;
-    setTimeout(() => { btn.style.display = "block"; }, 1200);   // кнопку «закрити» видно майже одразу, Esc теж працює
+    setTimeout(() => { btn.style.display = "block"; }, 600);    // закрити можна майже одразу (кнопка ✕ або Esc)
     setTimeout(close, 4200);
-    try {                                                       // помірна гучність, без стробоскопа
+    try {                                                       // мультяшний «бойнг» і «поп», помірна гучність, без стробоскопа
       ac = new (window.AudioContext || window.webkitAudioContext)();
       const t0 = ac.currentTime, g = ac.createGain();
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+      g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
       g.connect(ac.destination);
-      const o = ac.createOscillator(); o.type = "sawtooth";
-      o.frequency.setValueAtTime(220, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + 1.4);
-      o.connect(g); o.start(t0); o.stop(t0 + 1.6);
-      const nb = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.8), ac.sampleRate), data = nb.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-      const ns = ac.createBufferSource(); ns.buffer = nb; ns.connect(g); ns.start(t0);
+      const o = ac.createOscillator(); o.type = "triangle";
+      o.frequency.setValueAtTime(160, t0);
+      o.frequency.exponentialRampToValueAtTime(620, t0 + 0.18);
+      o.frequency.exponentialRampToValueAtTime(210, t0 + 0.7);
+      o.frequency.exponentialRampToValueAtTime(120, t0 + 1.2);
+      o.connect(g); o.start(t0); o.stop(t0 + 1.3);
+      const nb = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.12), ac.sampleRate), data = nb.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
+      const ns = ac.createBufferSource(), ng = ac.createGain();
+      ns.buffer = nb; ng.gain.value = 0.35; ns.connect(ng); ng.connect(ac.destination); ns.start(t0);
     } catch (e) {}
   }
 
@@ -1500,16 +1590,50 @@
   async function adminEntry() {
     if (!(acc.fb && fb.ok && fb.auth.currentUser)) { alert("Спочатку увійди в профіль."); return; }
     if (admLocked()) { alert("Доступ тимчасово заблоковано. Спробуй пізніше."); return; }
-    let isAdm = false;
-    try { isAdm = (await fb.f.getDoc(fb.f.doc(fb.db, "admins", fb.auth.currentUser.uid))).exists(); } catch (e) {}
+    let isAdm = false, why = "";
+    try {
+      isAdm = (await fb.f.getDoc(fb.f.doc(fb.db, "admins", fb.auth.currentUser.uid))).exists();
+      if (!isAdm) why = "документа admins/<UID> немає";
+    } catch (e) { why = "помилка читання: " + ((e && e.code) || e); }
+    if (!isAdm) console.info("[admin] другий фактор не пройдено:", why, "· UID цього профілю:", fb.auth.currentUser.uid);
     if (!isAdm) { admFail(); return; }                       // другий фактор: акаунт зі спеціальним записом у Firestore
     const pw = await askPassword();
     if (pw === null) return;
     const h = await hashPass(pw, ADM_SALT, "pbkdf2");
-    if (h !== ADM_HASH) { admFail(); return; }
+    if (h !== ADM_HASH) { console.info("[admin] пароль не збігається"); admFail(); return; }
     try { localStorage.setItem("bulb_adm_fail", "0"); } catch (e) {}
     renderAdmin();
   }
+  const REASONS = {
+    synthetic: "Програмні кліки: події натискання не від справжньої миші чи пальця (жорсткий сигнал)",
+    honeypot: "Натиснуто прихований елемент-пастку, якого людина не бачить (жорсткий сигнал)",
+    no_move: "Курсор майже не рухався між появою ягоди й кліком (понад 95% кліків)",
+    straight: "Курсор рухався ідеально прямими лініями (понад 80% кліків)",
+    rt_jitter: "Час реакції майже однаковий (розкид менше 3 мс)",
+    rate: "Понад 25 кліків за секунду"
+  };
+  // Видача чи вилучення малинок гравцю: гравець отримає зміну при наступному вході в меню
+  async function grantCoins(uid, n, note) {
+    const F = fb.f, ref = F.doc(fb.db, "grants", uid), s = await F.getDoc(ref);
+    const total = (s.exists() ? Number(s.data().total) || 0 : 0) + n;
+    await F.setDoc(ref, { total, ts: Date.now(), note: String(note).slice(0, 120), by: fb.auth.currentUser.uid });
+  }
+  async function checkGrants() {
+    if (!acc.fb || !fb.auth.currentUser) return 0;
+    try {
+      const s = await fb.f.getDoc(fb.f.doc(fb.db, "grants", fb.auth.currentUser.uid));
+      if (!s.exists()) return 0;
+      const total = Number(s.data().total) || 0, seen = Number(save.grantSeen) || 0;
+      if (total === seen) return 0;
+      const delta = total - seen;
+      save.coins = Math.max(0, save.coins + delta); save.grantSeen = total;
+      const note = s.data().note ? " (" + s.data().note + ")" : "";
+      acc.grantMsg = (delta > 0 ? "Адміністратор повернув тобі " + delta : "Адміністратор забрав " + (-delta)) + " малинок" + note;
+      persist();
+      return delta;
+    } catch (e) { return 0; }
+  }
+
   async function renderAdmin() {
     adminLock();
     admEl = document.createElement("div"); admEl.className = "admin";    // у DOM з'являється лише після перевірки
@@ -1517,21 +1641,36 @@
     document.body.appendChild(admEl);
     try {
       const F = fb.f, db = fb.db;
-      const [pl, pr, bn] = await Promise.all(["players", "priv", "bans"].map(c => F.getDocs(F.query(F.collection(db, c), F.limit(500)))));
-      const priv = {}, bans = {}, players = [];
+      const [pl, pr, bn, fl] = await Promise.all(["players", "priv", "bans", "flags"].map(c => F.getDocs(F.query(F.collection(db, c), F.limit(500)))));
+      const priv = {}, bans = {}, players = [], flagsList = [];
       pr.forEach(d => { priv[d.id] = d.data(); });
       bn.forEach(d => { bans[d.id] = d.data(); });
+      fl.forEach(d => flagsList.push({ id: d.id, ...d.data() }));
       pl.forEach(d => players.push({ uid: d.id, ...d.data() }));
-      drawAdmin(players, priv, bans);
+      drawAdmin(players, priv, bans, flagsList);
     } catch (e) {
       admEl.innerHTML = `<h2>Адмін-панель</h2><p>Помилка: ${esc((e && e.code) || e)}</p><button id="admX">Закрити</button>`;
       admEl.querySelector("#admX").onclick = adminLock;
     }
   }
-  function drawAdmin(players, priv, bans) {
+  function drawAdmin(players, priv, bans, flagsList) {
     const F = fb.f, db = fb.db, me = fb.auth.currentUser.uid;
     const fmt = x => x ? new Date(x).toLocaleString("uk-UA") : "—";
     players.sort((a, b) => String(a.nick).localeCompare(String(b.nick)));
+    const open = flagsList.filter(x => !x.resolved).sort((a, b) => b.ts - a.ts);
+    const flagRows = open.map(f => {
+      const dt = f.details || {};
+      const why = (f.reasons || []).map(r => esc(REASONS[r] || r)).join("<br>");
+      const info = `кліків: ${dt.clicks ?? "—"}, без руху: ${dt.noMove ?? "—"}, прямих: ${dt.straight ?? "—"}, реакція: ${dt.rtMean ?? "—"}±${dt.rtSd ?? "—"} мс, рівень: ${dt.level ?? "—"}, ягід: ${dt.collected ?? "—"}/${dt.total ?? "—"}, врожай: ${f.pct ?? "—"}%${f.won ? ", гру пройдено" : ""}`;
+      const act = f.held
+        ? `<input type="number" id="fc_${esc(f.id)}" value="${Number(f.coins) || 0}" style="width:80px"> <button data-f="ret" data-id="${esc(f.id)}">Повернути малинки</button> `
+        : "";
+      return `<tr><td>${esc(f.nick)}<br>${fmt(f.ts)}<br><b>${f.held ? "НА ПЕРЕВІРЦІ" : "лише позначка"}</b></td><td>${why}</td><td>${esc(info)}</td>
+        <td>${Number(f.coins) || 0}</td><td>${act}<button data-f="dis" data-id="${esc(f.id)}" class="danger">Відхилити</button></td></tr>`;
+    }).join("");
+    const flagsHtml = `<h2>Прапорці (${open.length})</h2>` + (open.length
+      ? `<div style="overflow:auto"><table><tr><th>Гравець / час</th><th>Причина</th><th>Деталі забігу</th><th>Малинок за забіг</th><th>Дія</th></tr>${flagRows}</table></div>`
+      : "<p>Відкритих прапорців немає.</p>");
     const rows = players.map(p => {
       const v = priv[p.uid] || {}, d = norm(p.data || {}), b = !!bans[p.uid], u = esc(p.uid);
       return `<tr><td>${esc(p.nick)}</td><td>${esc(v.ip || "—")}</td><td>${esc((v.fp || "").slice(0, 10) || "—")}</td>
@@ -1547,6 +1686,7 @@
     admEl.innerHTML = `<h2>Адмін-панель</h2>
       <p>IP-адреси показані лише для інформації. Банів за IP немає: бани діють за профілем і відбитком браузера.</p>
       <button id="admX">Закрити</button> <button id="admR">Оновити</button>
+      ${flagsHtml}
       <h2>Гравці</h2>
       <input id="admReason" placeholder="Причина бану" style="width:100%;max-width:340px">
       <div style="overflow:auto"><table><tr><th>Нік</th><th>IP</th><th>Відбиток</th><th>Прапорці</th><th>Золоті</th><th>Бан</th><th>Дії</th></tr>${rows}</table></div>
@@ -1578,6 +1718,19 @@
       if (p.uid === me) { alert("Себе банити не можна."); return; }
       await doBan(p.uid); renderAdmin();
     };
+    admEl.querySelectorAll("button[data-f]").forEach(b => b.onclick = async () => {
+      const id = b.dataset.id, f = flagsList.find(x => x.id === id); if (!f) return;
+      try {
+        if (b.dataset.f === "ret") {
+          const n = Math.max(0, Math.floor(Number(admEl.querySelector("#fc_" + id).value) || 0));
+          await grantCoins(f.uid, n, "повернення за забіг: " + (f.reasons || []).join(", "));
+          await F.updateDoc(F.doc(db, "flags", id), { resolved: true, resolution: "повернуто " + n, resolvedAt: Date.now() });
+        } else {
+          await F.updateDoc(F.doc(db, "flags", id), { resolved: true, resolution: "відхилено", resolvedAt: Date.now() });
+        }
+        renderAdmin();
+      } catch (e) { alert("Помилка: " + ((e && e.code) || e)); }
+    });
     admEl.querySelectorAll("button[data-a]").forEach(btn => btn.onclick = async () => {
       const a = btn.dataset.a, uid = btn.dataset.u;
       try {
@@ -1598,9 +1751,15 @@
       const f = (id, label, val) => `<label>${label}<input type="number" id="ed_${id}" value="${Number(val) || 0}"></label>`;
       admEl.querySelector("#admEdit").innerHTML = `<h2>Статистика: ${esc(p.nick)}</h2><div class="grid2">
         ${f("coins", "Малинки", d.coins)}${f("golden", "Золоті ожини", d.golden)}${f("wins", "Перемоги", d.wins)}${f("games", "Ігри", d.games)}
-        ${f("pct", "Рекорд врожаю %", d.best.pct)}${f("streak", "Рекорд серії", d.best.streak)}
+        ${f("pct", "Рекорд врожаю %", d.best.pct)}${f("give", "Видати малинки (±)", 0)}${f("streak", "Рекорд серії", d.best.streak)}
         ${UPGRADES.map(u => f("up_" + u.id, "Дерево: " + u.name + " (0–" + u.costs.length + ")", d.up[u.id])).join("")}
-        </div><button id="edSave">Зберегти</button>`;
+        </div><button id="edSave">Зберегти</button> <button id="edGive">Видати малинки</button>`;
+      admEl.querySelector("#edGive").onclick = async () => {
+        const n = Math.floor(Number(admEl.querySelector("#ed_give").value) || 0);
+        if (!n) return;
+        try { await grantCoins(uid, n, "видано адміністратором"); alert("Готово: гравець отримає зміну при наступному вході в меню."); }
+        catch (e) { alert("Помилка: " + ((e && e.code) || e)); }
+      };
       const num = (id, lo, hi) => Math.min(hi, Math.max(lo, Math.floor(Number(admEl.querySelector("#ed_" + id).value) || 0)));
       admEl.querySelector("#edSave").onclick = async () => {
         const upd = { "data.coins": num("coins", 0, 1e7), "data.golden": num("golden", 0, 1e6), "data.wins": num("wins", 0, 1e6),
@@ -1650,7 +1809,7 @@
   });
   field.addEventListener("pointerup", e => {
     if (!e.isTrusted || !S || S.downT == null) return;
-    const d = performance.now() - S.downT; S.downT = null;
+    const up = e.timeStamp > 1e12 ? performance.now() : e.timeStamp, d = up - S.downT; S.downT = null;
     if (d < 800) S.holds.push(d);
   });
   document.addEventListener("visibilitychange", () => {
