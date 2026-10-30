@@ -542,7 +542,7 @@
     acc.nick = String(r.nick).toLowerCase(); acc.guest = false; acc.server = false; acc.fb = true; acc.syncErr = false;
     save = norm(r.data || {});
     acc.rec = { nick: r.nick, data: save };
-    savePriv(); watchScreamer(user.uid);
+    savePriv(); startSession(); watchScreamer(user.uid);
     acc.banned = await checkBan(user.uid);
     return true;
   }
@@ -649,7 +649,7 @@
     return null;
   }
   function logout() {
-    if (acc.fb) { try { fb.a.signOut(fb.auth); } catch (e) {} }
+    if (acc.fb) { endSession("logout"); try { fb.a.signOut(fb.auth); } catch (e) {} }
     acc.fb = false;
     acc.nick = null; acc.rec = null; acc.guest = false; acc.server = false;
     accounts.current = null; accounts.sessionHash = null;
@@ -1546,6 +1546,29 @@
     } catch (e) {}
   }
 
+  // ---------- Історія входів і виходів ----------
+  let hbTimer = null;
+  async function startSession() {
+    try {
+      endSession("relogin");
+      const F = fb.f, u = fb.auth.currentUser;
+      if (!u) return;
+      const now = Date.now();
+      const ref = await F.addDoc(F.collection(fb.db, "sessions"), { uid: u.uid, nick: acc.rec.nick, start: now, lastSeen: now, end: null, ip: "" });
+      acc.sess = ref;
+      (ipP || (ipP = getIp())).then(ip => { if (ip && acc.sess === ref) F.updateDoc(ref, { ip }).catch(() => {}); });
+      clearInterval(hbTimer);
+      hbTimer = setInterval(() => {                              // «серцебиття»: фіксує час останньої активності
+        if (acc.sess && !document.hidden) F.updateDoc(acc.sess, { lastSeen: Date.now() }).catch(() => {});
+      }, 45000);
+    } catch (e) {}
+  }
+  function endSession(reason) {
+    const ref = acc.sess; acc.sess = null; clearInterval(hbTimer);
+    if (!ref) return;
+    try { fb.f.updateDoc(ref, { end: Date.now(), lastSeen: Date.now(), reason }).catch(() => {}); } catch (e) {}
+  }
+
   // ---------- Адмін-панель ----------
   // Справжній захист — правила Firestore: запис/читання службових даних дозволені лише тому, для кого створено документ admins/<uid>.
   // Пароль нижче — лише додатковий бар'єр в інтерфейсі (у коді зберігається тільки його PBKDF2-хеш).
@@ -1641,19 +1664,20 @@
     document.body.appendChild(admEl);
     try {
       const F = fb.f, db = fb.db;
-      const [pl, pr, bn, fl] = await Promise.all(["players", "priv", "bans", "flags"].map(c => F.getDocs(F.query(F.collection(db, c), F.limit(500)))));
-      const priv = {}, bans = {}, players = [], flagsList = [];
+      const [pl, pr, bn, fl, ss] = await Promise.all(["players", "priv", "bans", "flags", "sessions"].map(c => F.getDocs(c === "sessions" ? F.query(F.collection(db, c), F.orderBy("start", "desc"), F.limit(300)) : F.query(F.collection(db, c), F.limit(500)))));
+      const priv = {}, bans = {}, players = [], flagsList = [], sessList = [];
       pr.forEach(d => { priv[d.id] = d.data(); });
       bn.forEach(d => { bans[d.id] = d.data(); });
       fl.forEach(d => flagsList.push({ id: d.id, ...d.data() }));
+      ss.forEach(d => sessList.push({ id: d.id, ...d.data() }));
       pl.forEach(d => players.push({ uid: d.id, ...d.data() }));
-      drawAdmin(players, priv, bans, flagsList);
+      drawAdmin(players, priv, bans, flagsList, sessList);
     } catch (e) {
       admEl.innerHTML = `<h2>Адмін-панель</h2><p>Помилка: ${esc((e && e.code) || e)}</p><button id="admX">Закрити</button>`;
       admEl.querySelector("#admX").onclick = adminLock;
     }
   }
-  function drawAdmin(players, priv, bans, flagsList) {
+  function drawAdmin(players, priv, bans, flagsList, sessList) {
     const F = fb.f, db = fb.db, me = fb.auth.currentUser.uid;
     const fmt = x => x ? new Date(x).toLocaleString("uk-UA") : "—";
     players.sort((a, b) => String(a.nick).localeCompare(String(b.nick)));
@@ -1671,6 +1695,21 @@
     const flagsHtml = `<h2>Прапорці (${open.length})</h2>` + (open.length
       ? `<div style="overflow:auto"><table><tr><th>Гравець / час</th><th>Причина</th><th>Деталі забігу</th><th>Малинок за забіг</th><th>Дія</th></tr>${flagRows}</table></div>`
       : "<p>Відкритих прапорців немає.</p>");
+    const nowT = Date.now();
+    const dur = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? Math.floor(m / 60) + " г " + (m % 60) + " хв" : m + " хв"; };
+    const WHY = { logout: "вийшов з профілю", close: "закрив вкладку", relogin: "повторний вхід" };
+    const sessRows = sessList.map(s => {
+      const online = !s.end && nowT - (s.lastSeen || s.start) < 150000;
+      const endT = s.end || s.lastSeen || s.start;
+      const exit = online ? "<b>онлайн зараз</b>" : (s.end ? fmt(s.end) : "≈ " + fmt(endT));
+      const why = online ? "" : esc(s.end ? (WHY[s.reason] || s.reason || "") : "закрив без виходу або обрив зв’язку");
+      return `<tr data-n="${esc(String(s.nick || "").toLowerCase())}"><td>${esc(s.nick)}</td><td>${fmt(s.start)}</td><td>${exit}</td>
+        <td>${dur((online ? nowT : endT) - s.start)}</td><td>${why}</td><td>${esc(s.ip || "—")}</td></tr>`;
+    }).join("");
+    const sessHtml = `<h2>Історія входів (${sessList.length})</h2>
+      <input id="sessFilter" placeholder="Фільтр за ніком" style="width:100%;max-width:240px">
+      <div style="overflow:auto;max-height:55vh"><table><tr><th>Гравець</th><th>Зайшов</th><th>Вийшов</th><th>Тривалість</th><th>Як вийшов</th><th>IP</th></tr>${sessRows || "<tr><td colspan=6>Поки порожньо.</td></tr>"}</table></div>
+      <p>«≈» означає, що точного виходу немає: показано час останньої активності.</p>`;
     const rows = players.map(p => {
       const v = priv[p.uid] || {}, d = norm(p.data || {}), b = !!bans[p.uid], u = esc(p.uid);
       return `<tr><td>${esc(p.nick)}</td><td>${esc(v.ip || "—")}</td><td>${esc((v.fp || "").slice(0, 10) || "—")}</td>
@@ -1687,6 +1726,7 @@
       <p>IP-адреси показані лише для інформації. Банів за IP немає: бани діють за профілем і відбитком браузера.</p>
       <button id="admX">Закрити</button> <button id="admR">Оновити</button>
       ${flagsHtml}
+      ${sessHtml}
       <h2>Гравці</h2>
       <input id="admReason" placeholder="Причина бану" style="width:100%;max-width:340px">
       <div style="overflow:auto"><table><tr><th>Нік</th><th>IP</th><th>Відбиток</th><th>Прапорці</th><th>Золоті</th><th>Бан</th><th>Дії</th></tr>${rows}</table></div>
@@ -1698,6 +1738,10 @@
     const reasonVal = () => (admEl.querySelector("#admReason").value || "порушення правил").slice(0, 200);
     admEl.querySelector("#admX").onclick = adminLock;
     admEl.querySelector("#admR").onclick = renderAdmin;
+    admEl.querySelector("#sessFilter").oninput = e => {
+      const q = e.target.value.trim().toLowerCase();
+      admEl.querySelectorAll("tr[data-n]").forEach(r => { r.style.display = !q || r.dataset.n.includes(q) ? "" : "none"; });
+    };
     const doBan = async uid => {
       const p = players.find(x => x.uid === uid); if (!p) return;
       const fp = (priv[uid] || {}).fp || "";
@@ -1812,8 +1856,10 @@
     const up = e.timeStamp > 1e12 ? performance.now() : e.timeStamp, d = up - S.downT; S.downT = null;
     if (d < 800) S.holds.push(d);
   });
+  window.addEventListener("pagehide", () => endSession("close"));
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) return;
+    if (acc.sess && fb.ok) fb.f.updateDoc(acc.sess, { lastSeen: Date.now() }).catch(() => {});
     adminLock();                                           // адмінка закривається при втраті фокусу вкладки
     if (S && S.active !== null && !S.busy) burst(S.active, null, false);   // у фоні ягода лопається
   });
