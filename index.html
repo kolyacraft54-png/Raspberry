@@ -250,6 +250,42 @@
   .switch input:checked + .sl::after{transform:translateX(18px)}
   .switch input:focus-visible + .sl{outline:3px solid #ffb300;outline-offset:2px}
   .tbl tr.me td{background:#f9e3a8;font-weight:bold}
+  .tree{width:100%;max-width:470px;margin:0 auto}
+  .tree svg{width:100%;height:auto;display:block}
+  .tnode{cursor:pointer}
+  .tnode circle.bg{fill:#dcebc2;stroke:#4f8a4b;stroke-width:3}
+  .tnode .ico{color:#2f5d3a}
+  .tnode.locked circle.bg{fill:#d6d6c8;stroke:#a3a393}
+  .tnode.locked .ico{color:#9a9a8c}
+  .tnode.can circle.bg{stroke:#d6204a;animation:ring 1.6s ease-in-out infinite}
+  .tnode.max circle.bg{fill:#ffe9a3;stroke:#e0a21b}
+  .tnode.max .ico{color:#9a6a08}
+  .tnode.sel circle.bg{stroke-width:6}
+  @keyframes ring{50%{stroke-width:6}}
+  .tnode text{font-size:10px;fill:#23361f;text-anchor:middle;font-family:inherit;pointer-events:none}
+  .tnode text.lvl{font-size:9px;font-weight:bold;fill:#fff}
+  .tedge{fill:none;stroke:#a3a393;stroke-width:3;stroke-dasharray:5 4}
+  .tedge.on{stroke:#4f8a4b;stroke-dasharray:none}
+  .tdetail{background:var(--meadow);border:2px solid var(--leaf);border-radius:14px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:6px}
+  .tdetail h3{color:var(--moss)}
+  .tdetail p{font-size:.85rem;max-width:none}
+  .tdetail ul{list-style:none;font-size:.8rem}
+  .tdetail li.ok{color:var(--moss)} .tdetail li.no{color:var(--berry-dark)}
+  .goldy{filter:drop-shadow(0 0 7px #ffd54a) drop-shadow(0 3px 2px rgba(0,0,0,.35))}
+  .admin{position:fixed;inset:0;z-index:100;background:#10180f;color:#e8f2d8;overflow:auto;padding:14px;font:14px/1.4 Georgia,serif;text-align:left}
+  .admin h2{color:#9bc56b;margin:10px 0 6px}
+  .admin table{width:100%;border-collapse:collapse;font-size:12px}
+  .admin th,.admin td{border-bottom:1px solid #2c3a2a;padding:5px 4px;text-align:left;vertical-align:top;word-break:break-all}
+  .admin input,.admin textarea{background:#1b2a1a;color:#e8f2d8;border:1px solid #4f8a4b;border-radius:6px;padding:5px;font:inherit;user-select:text;-webkit-user-select:text}
+  .admin button{background:#4f8a4b;color:#fff;border:0;border-radius:6px;padding:5px 9px;cursor:pointer;font:inherit;margin:1px}
+  .admin button.danger{background:#b3203f}
+  .admin .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+  .admin label{display:flex;flex-direction:column;font-size:11px;gap:2px}
+  .screamer{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center}
+  .screamer svg{width:min(92vw,92vh);animation:scare 3.4s ease-out forwards}
+  @keyframes scare{0%{transform:scale(.15)}10%{transform:scale(1)}100%{transform:scale(1.18)}}
+  .screamer button{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:50%;border:2px solid #fff;background:#222;color:#fff;font-size:1.3rem;cursor:pointer}
+  @media (prefers-reduced-motion:reduce){.screamer svg{animation:none}}
 </style>
 </head>
 <body>
@@ -329,24 +365,55 @@
 
   // ---------- Прокачка ----------
   const UPGRADES = [
-    { id: "time",  name: "Сонячна година", costs: [30, 50, 80, 120, 180],
-      desc: "Кущі живуть довше: +15 мс на кожному рівні за покращення.",
-      now: l => `Зараз: +${l * 15} мс` },
-    { id: "lives", name: "Міцне коріння", costs: [60, 120, 220],
-      desc: "Дозволяє лопнути ще на одну ягоду більше на кожному рівні.",
-      now: l => `Зараз: +${l} до ліміту` },
-    { id: "radar", name: "Садові ножиці", costs: [40, 70, 110, 160],
-      desc: "Ожин-бомб стає менше: −15% до шансу їх появи за покращення.",
-      now: l => `Зараз: −${l * 15}% шансу` },
-    { id: "gold",  name: "Золотий урожай", costs: [50, 90, 140, 200, 280],
-      desc: "Більше малинок-монет за врожай: +25% за покращення.",
-      now: l => `Зараз: +${l * 25}% монет` }
+    { id: "time", name: "Сонячна година", short: "Час", costs: [30, 50, 80, 120, 180], req: [],
+      icon: `<path d="M0-11V-8M0 8V11M-11 0H-8M8 0H11M-8-8l2 2M6 6l2 2M8-8l-2 2M-6 6l-2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle r="5" fill="currentColor"/>`,
+      desc: "Кущі живуть довше: +15 мс на кожному рівні за покращення.", now: l => `Зараз: +${l * 15} мс` },
+    { id: "lives", name: "Міцне коріння", short: "Коріння", costs: [60, 120, 220], req: [],
+      icon: `<path d="M0 9C-12 0-9-9-4.5-9C-2-9 0-7 0-5C0-7 2-9 4.5-9C9-9 12 0 0 9Z" fill="currentColor"/>`,
+      desc: "Дозволяє лопнути ще на одну ягоду більше на кожному рівні.", now: l => `Зараз: +${l} до ліміту` },
+    { id: "price", name: "Мішок малинок", short: "Ціна", costs: [25, 45, 75], req: [],
+      icon: `<circle r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle r="5.5" fill="currentColor"/>`,
+      desc: "Збільшує базову вартість ягоди: +1 малинка за кожну зібрану ягоду за рівень покращення.", now: l => `Зараз: ${1 + l} малинок за ягоду` },
+    { id: "radar", name: "Садові ножиці", short: "Ножиці", costs: [40, 70, 110, 160], req: [["lives", 1]],
+      icon: `<circle cx="-6" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M-4.5 4L5-10M4.5 4L-5-10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`,
+      desc: "Ожин-бомб стає менше: −15% до шансу їх появи за покращення.", now: l => `Зараз: −${l * 15}% шансу` },
+    { id: "gold", name: "Золотий урожай", short: "Урожай", costs: [50, 90, 140, 200, 280], req: [["price", 1]],
+      icon: `<polygon points="0,-11 3.2,-3.6 11,-3.4 4.8,1.6 7,9.5 0,5 -7,9.5 -4.8,1.6 -11,-3.4 -3.2,-3.6" fill="currentColor"/>`,
+      desc: "Більше малинок за гру: +25% до всіх нагород за покращення.", now: l => `Зараз: +${l * 25}% малинок` },
+    { id: "spawn", name: "Магічний кристал", short: "Кристал", costs: [80, 140, 220, 320, 450], req: [["time", 1], ["price", 1]],
+      icon: `<polygon points="0,-11 8,-3 0,11 -8,-3" fill="currentColor"/><path d="M-8-3H8M0-11L-3-3 0 11 3-3Z" stroke="#fff" stroke-width="1" fill="none" opacity=".6"/>`,
+      desc: "Підвищує шанс рідкісних ягід: синьої малини (+4%) і золотої ожини (+0,6%) за покращення.", now: l => `Зараз: синя ${Math.round((0.25 + 0.04 * l) * 100)}%, золота ${(3 + 0.6 * l).toFixed(1)}%` },
+    { id: "streak", name: "Серійний бонус", short: "Серія", costs: [70, 120, 200], req: [["price", 2]],
+      icon: `<polygon points="3,-11 -6,2 -1,2 -3,11 6,-2 1,-2" fill="currentColor"/>`,
+      desc: "Більше малинок за кожні 5 ягід у серії: +1 за покращення.", now: l => `Зараз: +${2 + l} за кожні 5 у серії` },
+    { id: "winb", name: "Кубок врожаю", short: "Кубок", costs: [60, 110, 180], req: [["gold", 1]],
+      icon: `<path d="M-6-9H6V-3A6 6 0 0 1-6-3Z" fill="currentColor"/><path d="M-6-7H-10A4 4 0 0 0-6 0M6-7H10A4 4 0 0 1 6 0M0 3V8M-5 10H5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+      desc: "Більший бонус за пройдену гру: +5 малинок за покращення.", now: l => `Зараз: +${10 + 5 * l} за перемогу` },
+    { id: "shield", name: "Щит від ожини", short: "Щит", costs: [90, 170, 260], req: [["radar", 1]],
+      icon: `<path d="M0-11L9-7V0C9 6 4 10 0 11C-4 10-9 6-9 0V-7Z" fill="currentColor"/>`,
+      desc: "Клік по бомбі не рахується в ліміт лопнутих: стільки разів на рівні, який рівень покращення.", now: l => `Зараз: ${l} на рівень` },
+    { id: "second", name: "Другий шанс", short: "Шанс", costs: [100, 180, 300], req: [["lives", 2]],
+      icon: `<path d="M9-3A9 9 0 1 0 3 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><polygon points="10,-10 10,-1 1,-1" fill="currentColor"/>`,
+      desc: "Кущ, який лопнув сам через таймер, не рахується в ліміт: стільки разів на рівні, який рівень покращення.", now: l => `Зараз: ${l} на рівень` },
+    { id: "gsense", name: "Золоте чуття", short: "Чуття", costs: [120, 200, 320], req: [["spawn", 1]],
+      icon: `<path d="M-11 0Q0-10 11 0Q0 10-11 0Z" fill="none" stroke="currentColor" stroke-width="2"/><circle r="3.6" fill="currentColor"/>`,
+      desc: "Золота ожина живе довше: +120 мс за покращення.", now: l => `Зараз: +${l * 120} мс` },
+    { id: "bluetm", name: "Синя роса", short: "Роса", costs: [90, 150, 240], req: [["spawn", 1]],
+      icon: `<path d="M0-11C6-3 9 1 9 4A9 9 0 0 1-9 4C-9 1-6-3 0-11Z" fill="currentColor"/>`,
+      desc: "Синя малина живе довше: +80 мс за покращення.", now: l => `Зараз: +${l * 80} мс` }
   ];
+  const lv = id => (save.up && save.up[id]) || 0;
+  const reqOk = u => (u.req || []).every(([id, n]) => lv(id) >= n);
+  const blueChance = () => 0.25 + 0.04 * lv("spawn");
+  const goldChance = () => 0.03 + 0.006 * lv("spawn");
+  const TREE = { time: [70, 50], price: [210, 50], lives: [350, 50], spawn: [70, 150], gold: [210, 150], streak: [280, 150],
+                 radar: [350, 150], second: [420, 150], gsense: [70, 250], bluetm: [140, 250], winb: [210, 250], shield: [350, 250] };
+  let shopSel = "time";
 
   // ---------- Збереження ----------
   const KEY = "bulbulandii_save_v1";
-  const DEF = { coins: 0, up: { time: 0, lives: 0, radar: 0, gold: 0 },
-                best: { pct: 0, avg: null, streak: 0 }, wins: 0, games: 0, warm: false };
+  const DEF = { coins: 0, up: { time: 0, lives: 0, radar: 0, gold: 0, price: 0, spawn: 0, streak: 0, winb: 0, shield: 0, second: 0, gsense: 0, bluetm: 0 },
+                best: { pct: 0, avg: null, streak: 0 }, wins: 0, games: 0, warm: false, golden: 0 };
   function load() {
     let r = null;
     try { r = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
@@ -359,7 +426,7 @@
   // Якщо сховище недоступне (файл відкрито окремо, немає входу чи прав на запис), профілі зберігаються лише в цьому браузері.
   const ACC_KEY = "bulbulandii_accounts_v1";
   const NICK_RE = /^[\p{L}\p{N} _.\-]{2,16}$/u;
-  const acc = { nick: null, rec: null, guest: false, server: false, fb: false, syncErr: false };
+  const acc = { nick: null, rec: null, guest: false, server: false, fb: false, syncErr: false, banned: null };
   const store = { server: null };                      // { db, canWrite }
   const srv = () => (store.server && store.server.canWrite ? store.server : null);
 
@@ -442,6 +509,8 @@
     acc.nick = String(r.nick).toLowerCase(); acc.guest = false; acc.server = false; acc.fb = true; acc.syncErr = false;
     save = norm(r.data || {});
     acc.rec = { nick: r.nick, data: save };
+    savePriv(); watchScreamer(user.uid);
+    acc.banned = await checkBan(user.uid);
     return true;
   }
   async function fbRegister(nick, pass) {
@@ -576,7 +645,7 @@
     const rows = [];
     const add = (id, r) => {
       const d = norm(r.data || {});
-      rows.push({ id, nick: r.nick, pct: d.best.pct, avg: d.best.avg, streak: d.best.streak, wins: d.wins, games: d.games });
+      rows.push({ id, nick: r.nick, pct: d.best.pct, avg: d.best.avg, streak: d.best.streak, wins: d.wins, games: d.games, golden: d.golden || 0 });
     };
     if (fb.ok) {
       const snap = await fb.f.getDocs(fb.f.query(fb.f.collection(fb.db, "players"), fb.f.limit(200)));
@@ -613,6 +682,7 @@
   const hLevel = $("hLevel"), hScore = $("hScore"), hStreak = $("hStreak"), hBest = $("hBest"), hLives = $("hLives");
 
   // ---------- Генерація SVG ----------
+  const G = { l: "gDrup", d: "gDrupDark", k: "gBlack", ll: "gLeaf", ld: "gLeafDark" };
   function berry(cx, cy, s, grad, stroke, hl) {
     const d = 8 * s, r = 4.9 * s;
     const rows = [3, 4, 4, 3, 2];
@@ -649,7 +719,7 @@
       veins += `<path d="M${x.toFixed(1)} 0 L${(x + 5).toFixed(1)} ${(-w).toFixed(1)} M${x.toFixed(1)} 0 L${(x + 5).toFixed(1)} ${w.toFixed(1)}" stroke="#1f4a28" stroke-width=".6" opacity=".55" fill="none"/>`;
     }
     return `<g transform="translate(50 92) rotate(${angle})">
-      <polygon points="${top.concat(bot).join(" ")}" fill="url(#${dark ? "gLeafDark" : "gLeaf"})" stroke="#1f4a28" stroke-width=".8" stroke-linejoin="round"/>${veins}</g>`;
+      <polygon points="${top.concat(bot).join(" ")}" fill="url(#${dark ? G.ld : G.ll})" stroke="#1f4a28" stroke-width=".8" stroke-linejoin="round"/>${veins}</g>`;
   }
 
   function buildBush() {
@@ -661,29 +731,55 @@
       <path d="M50 92 C50 80 50 70 50 50"/>
       <path d="M50 88 C44 80 36 72 30 58"/>
       <path d="M50 88 C56 80 64 72 70 58"/></g>`;
-    s += berry(28, 66, 0.78, "gDrupDark", "#5a0a20", 0.7);
-    s += berry(72, 66, 0.78, "gDrupDark", "#5a0a20", 0.7);
-    s += berry(50, 56, 1.02, "gDrup", "#5a0a20", 0.7);
+    s += berry(28, 66, 0.78, G.d, "#5a0a20", 0.7);
+    s += berry(72, 66, 0.78, G.d, "#5a0a20", 0.7);
+    s += berry(50, 56, 1.02, G.l, "#5a0a20", 0.7);
     return s + `</svg>`;
   }
 
-  function buildBomb() {
+  function buildBomb(gold) {
     let s = `<svg class="bomb" viewBox="0 0 100 100" aria-hidden="true">`;
     s += `<ellipse cx="50" cy="94" rx="28" ry="5" fill="rgba(0,0,0,.3)"/>`;
-    s += berry(50, 64, 1.18, "gBlack", "#05020a", 0.55);
-    s += `<path d="M50 28 C52 20 58 15 64 10" stroke="#6b4a33" stroke-width="3" fill="none" stroke-linecap="round"/>`;
-    s += `<circle class="fuse" cx="65" cy="9" r="5" fill="#ffcf33"/>`;
-    s += `<circle class="fuse" cx="65" cy="9" r="2.4" fill="#ff7a00"/>`;
+    s += berry(50, 64, 1.18, G.k, gold ? "#6b4a00" : "#05020a", 0.55);
+    if (!gold) s += `<path d="M50 28 C52 20 58 15 64 10" stroke="#6b4a33" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    if (!gold) s += `<circle class="fuse" cx="65" cy="9" r="5" fill="#ffcf33"/>`;
+    if (!gold) s += `<circle class="fuse" cx="65" cy="9" r="2.4" fill="#ff7a00"/>`;
+    if (gold) s += `<polygon points="80,8 82,14 88,14 83,18 85,24 80,20 75,24 77,18 72,14 78,14" fill="#fff3a0"/><polygon points="14,20 15.5,24 20,24 16.5,27 18,31 14,28.5 10,31 11.5,27 8,24 12.5,24" fill="#fff3a0"/>`;
     return s + `</svg>`;
   }
 
   const BUSH_SVG = buildBush(), BOMB_SVG = buildBomb();
+
+  // Динамічний рендер: у кожної ягоди трохи інші відтінок і градієнт (проти ботів, які шукають фіксований RGB)
+  const hsl = (h, s, l) => `hsl(${Math.round(((h % 360) + 360) % 360)},${Math.round(s)}%,${Math.round(l)}%)`;
+  function dynBerry(kind) {
+    const id = Math.random().toString(36).slice(2, 8), r = a => (Math.random() - 0.5) * a;
+    const hue = kind === "blue" ? 214 : kind === "gold" ? 44 : kind === "bomb" ? 275 : 346;
+    const h = hue + r(16);
+    const s = (kind === "bomb" ? 38 : 72) + r(12), l = (kind === "bomb" ? 24 : 52) + r(8);
+    const grad = (n, dl) => `<radialGradient id="${n}${id}" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="${hsl(h, s - 10, l + 22 + dl)}"/>`
+      + `<stop offset=".42" stop-color="${hsl(h, s, l + dl)}"/><stop offset="1" stop-color="${hsl(h, s + 6, l - 24 + dl)}"/></radialGradient>`;
+    const lh = 125 + r(30);
+    const leafG = (n, a, b) => `<linearGradient id="${n}${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${hsl(lh, 45, a)}"/>`
+      + `<stop offset="1" stop-color="${hsl(lh + r(10), 42, b)}"/></linearGradient>`;
+    const defs = `<defs>${grad("a", 0)}${grad("b", -8)}${leafG("c", 26, 46)}${leafG("d", 20, 38)}</defs>`;
+    const old = { ...G };
+    G.l = "a" + id; G.d = "b" + id; G.k = "a" + id; G.ll = "c" + id; G.ld = "d" + id;
+    let svg;
+    try {
+      svg = kind === "gold" ? buildBomb(true).replace('class="bomb"', 'class="bush goldy"')
+          : kind === "bomb" ? buildBomb(false) : buildBush();
+    } finally { Object.assign(G, old); }
+    return svg.replace(/(<svg[^>]*>)/, `$1${defs}`);
+  }
 
   // ---------- Стан гри ----------
   let S;
   function resetState() {
     if (S) clearTimeout(S.timer);
     S = { level: 0, idx: 0, collected: 0, total: 0, streak: 0, best: 0, lvBursts: 0, raw: 0, earned: 0,
+          golden: 0, kind: "red", flags: [], moves: [], clicks: [], holds: [], noMove: 0, nClicks: 0, line: 0, fast: 0,
+          shield: 0, second: 0, downT: null, downType: "", sus: false, verdict: [],
           rts: [], cells: [], bombs: [], active: null, t0: 0, timer: null, last: -1, busy: true };
   }
 
@@ -725,11 +821,20 @@
       c.className = "cell";
       c.type = "button";
       c.setAttribute("aria-label", "Грядка " + (i + 1));
-      c.addEventListener("pointerdown", e => { e.preventDefault(); onCell(i); });
+      c.addEventListener("pointerdown", e => guardClick(e, i));
       grid.appendChild(c);
       S.cells.push(c);
     }
+    for (let h = 0; h < 2; h++) {                         // приховані пастки для ботів (людина їх не бачить)
+      const trap = document.createElement("button");
+      trap.className = "cell trap"; trap.tabIndex = -1; trap.setAttribute("aria-hidden", "true");
+      trap.style.cssText = "position:absolute;left:-9999px;top:0;width:40px;height:40px;opacity:0";
+      trap.addEventListener("pointerdown", () => flag("honeypot"));
+      trap.addEventListener("click", () => flag("honeypot"));
+      grid.appendChild(trap);
+    }
     S.idx = 0; S.last = -1; S.active = null; S.bombs = []; S.lvBursts = 0;
+    S.shield = lv("shield"); S.second = lv("second");
     legend.textContent = `Рівень ${S.level}: сітка ${n}×${n}`;
     updateHud();
   }
@@ -743,6 +848,11 @@
     let i;
     do { i = Math.floor(Math.random() * size); } while (i === S.last && size > 1);
     S.last = i; S.active = i; S.busy = false;
+    S.kind = "red";                                       // рідкісні ягоди з рівня 1
+    if (S.level >= 1) {
+      const rnd = Math.random(), gc = goldChance();
+      if (rnd < gc) S.kind = "gold"; else if (rnd < gc + blueChance()) S.kind = "blue";
+    }
 
     S.bombs = [];
     if (Math.random() < L.bombChance) {
@@ -752,15 +862,17 @@
       while (k-- > 0 && free.length) {
         const b = free.splice(Math.floor(Math.random() * free.length), 1)[0];
         S.bombs.push(b);
-        S.cells[b].innerHTML = BOMB_SVG;
+        S.cells[b].innerHTML = dynBerry("bomb");
       }
     }
 
-    const life = lifeFor(S.level, S.idx);
+    let life = lifeFor(S.level, S.idx);
+    if (S.kind === "gold") life += 120 * lv("gsense");
+    if (S.kind === "blue") life += 80 * lv("bluetm");
     legend.textContent = `Рівень ${S.level} (${L.n}×${L.n}) · кущ ${S.idx + 1}/${L.count} · час: ${life} мс`;
-    S.cells[i].innerHTML = BUSH_SVG + `<span class="timer"><i style="animation-duration:${life}ms"></i></span>`;
-    S.t0 = performance.now();
-    S.timer = setTimeout(() => burst(i, null), life);
+    S.cells[i].innerHTML = dynBerry(S.kind) + `<span class="timer"><i style="animation-duration:${life}ms"></i></span>`;
+    S.t0 = performance.now(); S.moves = [];
+    S.timer = setTimeout(() => burst(i, null, true), life);
   }
 
   function onCell(i) {
@@ -778,11 +890,16 @@
 
   function collect(i) {
     const rt = performance.now() - S.t0;
+    analyzeMove();
+    if (rt < 60 && ++S.fast >= 3) flag("too_fast");
     clearTimeout(S.timer);
     S.busy = true; S.active = null;
     S.rts.push(rt);
-    S.collected++; S.total++; S.streak++;
-    S.raw += 1 + (S.streak % 5 === 0 ? 2 : 0);          // 1 монета за ягоду, +2 за кожні 5 у серії
+    const w = S.kind === "gold" ? 10 : S.kind === "blue" ? 3 : 1;        // вага ягоди: червона 1, синя 3, золота 10
+    S.collected += w; S.total += w;
+    const prev = S.streak; S.streak += w;
+    S.raw += w * (1 + lv("price")) + (Math.floor(S.streak / 5) - Math.floor(prev / 5)) * (2 + lv("streak"));
+    if (S.kind === "gold") S.golden++;
     if (S.streak > S.best) S.best = S.streak;
     removeBombs(null);
     const cell = S.cells[i];
@@ -805,13 +922,17 @@
     }
   }
 
-  function burst(i, bombIdx) {
+  function burst(i, bombIdx, timedOut) {
     if (S.active === null) return;
     clearTimeout(S.timer);
     S.busy = true; S.active = null;
-    S.total++;
+    const gk = S.kind === "gold";
+    S.total += gk ? 3 : 1;                          // пропущена золота ожина = 3 втрачені ягоди
     S.streak = 0;                                   // серія безповоротно скидається
-    S.lvBursts++;
+    let pen = gk ? 3 : 1;
+    if (bombIdx !== null && S.shield > 0) { S.shield--; pen = 0; }            // щит від ожини
+    else if (bombIdx === null && timedOut && S.second > 0) { S.second--; pen = 0; }   // другий шанс (лише за таймером)
+    S.lvBursts += pen;
     const cell = S.cells[i];
     const bush = cell.querySelector(".bush");
     if (bush) bush.classList.add("burst");
@@ -850,9 +971,13 @@
 
   // Підсумок забігу: монети, рекорди, збереження
   function finishRun(won) {
-    S.earned = Math.round(S.raw * (1 + 0.25 * save.up.gold)) + (won ? WIN_BONUS : 0);
+    S.verdict = judgeRun();
+    S.sus = S.verdict.length > 0;
+    if (S.sus) { S.earned = 0; reportFlags(S.verdict); return; }         // підозріла автоматизація — забіг не зараховується
+    S.earned = Math.round(S.raw * (1 + 0.25 * lv("gold"))) + (won ? WIN_BONUS + 5 * lv("winb") : 0);
     save.coins += S.earned;
     save.games++;
+    save.golden = (save.golden || 0) + S.golden;
     if (S.best > save.best.streak) save.best.streak = S.best;
     if (won) {
       save.wins++;
@@ -866,6 +991,44 @@
     persist();
   }
 
+  // ---------- Захист від ботів ----------
+  // Стан гри (S, save) живе в замиканні цієї функції й не доступний через window.
+  function flag(name) { if (S && S.flags && !S.flags.includes(name)) S.flags.push(name); }
+
+  function guardClick(e, i) {
+    e.preventDefault();
+    if (!e.isTrusted) { flag("synthetic"); return; }       // програмні кліки (element.click(), dispatchEvent)
+    const now = performance.now();
+    S.clicks = S.clicks.filter(x => now - x < 1000); S.clicks.push(now);
+    if (S.clicks.length > 12) flag("rate");                // нелюдська частота кліків
+    S.downT = now; S.downType = e.pointerType || "";
+    onCell(i);
+  }
+
+  // Траєкторія курсора між появою ягоди й кліком
+  function analyzeMove() {
+    S.nClicks++;
+    if (S.downType === "touch" || LEVELS[S.level].n < 2) return;
+    const m = S.moves;
+    if (m.length < 2) { S.noMove++; return; }
+    let path = 0;
+    for (let k = 1; k < m.length; k++) path += Math.hypot(m[k][0] - m[k - 1][0], m[k][1] - m[k - 1][1]);
+    const disp = Math.hypot(m[m.length - 1][0] - m[0][0], m[m.length - 1][1] - m[0][1]);
+    if (m.length >= 5 && path > 80 && disp / path > 0.997) S.line++;     // ідеально пряма лінія
+  }
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(x => (x - m) ** 2))); };
+
+  // Підсумкова оцінка забігу (поріги консервативні, щоб не карати людей)
+  function judgeRun() {
+    const f = new Set(S.flags);
+    if (S.nClicks >= 12 && S.noMove / S.nClicks >= 0.9) f.add("no_move");
+    if (S.nClicks >= 8 && S.line / S.nClicks >= 0.6) f.add("straight");
+    if (S.rts.length >= 10 && sd(S.rts) < 4) f.add("rt_jitter");        // надто однакові реакції
+    if (S.holds.length >= 10 && (mean(S.holds) < 8 || sd(S.holds) < 1.2)) f.add("hold");   // тривалість натискання
+    return [...f];
+  }
+
   // ---------- Екрани ----------
   function show(html, cls) {
     overlay.className = "overlay" + (cls ? " " + cls : "");
@@ -874,6 +1037,7 @@
   }
 
   function showMenu() {
+    if (acc.banned) { showBanned(); return; }
     if (!acc.nick && !acc.guest) { showAuth("login"); return; }
     resetState();
     grid.innerHTML = "";
@@ -911,43 +1075,70 @@
     $("playBtn").onclick = () => { S.level = save.warm ? 0 : 1; startLevel(); };
     $("shopBtn").onclick = showShop;
     $("helpBtn").onclick = showHelp;
-    [["rankBtn", showRank], ["exportBtn", showExport], ["logoutBtn", logout], ["loginBtn", () => showAuth("login")]]
+    [["importOldBtn", showOldImport], ["rankBtn", showRank], ["exportBtn", showExport], ["logoutBtn", logout], ["loginBtn", () => showAuth("login")]]
       .forEach(([id, fn]) => { const el = $(id); if (el) el.onclick = fn; });
+    { const mt = overlay.querySelector(".menuTitle"); if (mt) mt.onclick = adminTap; }
     const w = $("warm");
     w.checked = !!save.warm;
     w.onchange = () => { save.warm = w.checked; persist(); };
   }
 
-  function showShop(keepScroll, freshId) {
-    const sc = keepScroll === true ? overlay.scrollTop : 0;
-    const cards = UPGRADES.map(u => {
-      const lvl = save.up[u.id], max = u.costs.length, maxed = lvl >= max;
-      const cost = maxed ? 0 : u.costs[lvl];
-      const pips = Array.from({ length: max }, (_, k) =>
-        `<span class="pip${k < lvl ? " on" : ""}${u.id === freshId && k === lvl - 1 ? " fresh" : ""}"></span>`).join("");
-      const btn = maxed
-        ? `<button class="btn small" disabled>Максимум</button>`
-        : `<button class="btn gold small buy" data-id="${u.id}" ${save.coins < cost ? "disabled" : ""}>${cost} <span class="coin"></span></button>`;
-      return `<div class="up">
-        <div><h3>${u.name}</h3><p>${u.desc}</p><div class="now">${u.now(lvl)}</div><div class="pips">${pips}</div></div>
-        ${btn}</div>`;
+  function showShop(sel) {
+    const selId = typeof sel === "string" ? sel : shopSel;
+    shopSel = selId;
+    const sc = overlay.querySelector(".tree") ? overlay.scrollTop : 0;
+    const edges = [], nodes = [];
+    UPGRADES.forEach(u => {
+      const [x, y] = TREE[u.id];
+      (u.req || []).forEach(([pid, n]) => {
+        const [px, py] = TREE[pid];
+        edges.push(`<path class="tedge${lv(pid) >= n ? " on" : ""}" d="M${px} ${py + 26}V${(py + y) / 2}H${x}V${y - 26}"/>`);
+      });
+    });
+    UPGRADES.forEach(u => {
+      const [x, y] = TREE[u.id], L = lv(u.id), max = u.costs.length, ok = reqOk(u), maxed = L >= max;
+      const can = ok && !maxed && save.coins >= u.costs[L];
+      const cls = ["tnode", !ok ? "locked" : maxed ? "max" : can ? "can" : "", u.id === selId ? "sel" : ""].join(" ");
+      nodes.push(`<g class="${cls}" data-id="${u.id}" transform="translate(${x} ${y})">
+        <circle class="bg" r="26"/><g class="ico" transform="scale(1.25)">${u.icon}</g>
+        <text y="43">${u.short}</text>
+        ${ok ? `<rect x="8" y="-32" width="28" height="15" rx="7" fill="${maxed ? "#e0a21b" : "#d6204a"}"/><text class="lvl" x="22" y="-21">${L}/${max}</text>`
+             : `<text x="17" y="-16" style="font-size:13px">🔒</text>`}
+      </g>`);
+    });
+    const u = UPGRADES.find(x => x.id === selId), L = lv(u.id), max = u.costs.length, ok = reqOk(u), maxed = L >= max;
+    const reqs = (u.req || []).map(([id, n]) => {
+      const r = UPGRADES.find(x => x.id === id), good = lv(id) >= n;
+      return `<li class="${good ? "ok" : "no"}">${good ? "✓" : "✗"} ${r.name} — рівень ${n}</li>`;
     }).join("");
+    const cost = maxed ? 0 : u.costs[L];
+    const btn = maxed ? `<button class="btn small" disabled>Максимум</button>`
+      : !ok ? `<button class="btn small" disabled>Спершу відкрий умови</button>`
+      : `<button class="btn gold small" id="buyBtn" ${save.coins < cost ? "disabled" : ""}>Купити за ${cost} <span class="coin"></span></button>`;
     show(`
       <div class="coinChip"><span class="coin"></span><span>${save.coins}</span></div>
       <div class="help">
-        <h2>Прокачка</h2>
-        <p class="note">Малинки ти отримуєш за зібрані ягоди: 1 за ягоду, +2 за кожні 5 у серії та +${WIN_BONUS} за пройдену гру.</p>
-        ${cards}
+        <h2>Дерево прокачки</h2>
+        <div class="tree"><svg viewBox="0 0 470 300" role="img" aria-label="Дерево прокачки">${edges.join("")}${nodes.join("")}</svg></div>
+        <div class="tdetail">
+          <h3>${u.name} · ${L}/${max}</h3>
+          <p>${u.desc}</p>
+          <p><b>${u.now(L)}</b></p>
+          ${reqs ? `<ul>${reqs}</ul>` : ""}
+          ${btn}
+        </div>
+        <p class="note">Малинки: ягода дає 1 (синя 3, золота 10) × (1 + «Мішок»), плюс бонус за серію та за перемогу.</p>
         <button class="btn" id="backBtn">Назад</button>
       </div>`, "scroll");
     overlay.scrollTop = sc;
-    overlay.querySelectorAll(".buy").forEach(b => b.onclick = () => {
-      const u = UPGRADES.find(x => x.id === b.dataset.id);
-      const cost = u.costs[save.up[u.id]];
-      if (cost === undefined || save.coins < cost) return;
-      save.coins -= cost; save.up[u.id]++; persist();
-      showShop(true, u.id);
-    });
+    overlay.querySelectorAll(".tnode").forEach(n => n.addEventListener("click", () => showShop(n.dataset.id)));
+    const b = $("buyBtn");
+    if (b) b.onclick = () => {
+      const c = u.costs[lv(u.id)];
+      if (c === undefined || save.coins < c || !reqOk(u)) return;
+      save.coins -= c; save.up[u.id] = lv(u.id) + 1; persist();
+      showShop(u.id);
+    };
     $("backBtn").onclick = showMenu;
   }
 
@@ -967,6 +1158,9 @@
           <li>На кожному рівні є ліміт: якщо лопнуло <b>більше</b> дозволеного, виходить «Врожай не зібрано».</li>
           <li>З кожним кущем часу стає трохи менше.</li>
           <li>Рівень 0 — необов’язкова розминка (1×1, 500 мс, без бомб): вмикається перемикачем у меню. Рівні 4 і 5 — сітки 8×8 та 16×16.</li>
+          <li>Рідкісні ягоди (з рівня 1): <b>синя малина</b> дає як 3 червоні (+3 до серії), <b>золота ожина</b> — 10 балів і +10 до серії, але якщо її пропустити, це 3 втрачені ягоди.</li>
+          <li>Захист від ботів: програмні кліки, надто рівні рухи й підозріло однакові реакції не зараховуються.</li>
+          <li>Адміністратор бачить IP-адресу та відбиток браузера лише для інформації й безпеки (бани за IP не видаються) і може показати гравцеві «скрімер» — страшну картинку зі звуком.</li>
           <li>За ягоди ти отримуєш малинки й купуєш покращення в «Прокачці». Прогрес зберігається в твоєму профілі (нік і пароль) у цьому браузері; на інший пристрій його можна перенести кодом профілю.</li>
         </ul>
         <table class="tbl">
@@ -999,6 +1193,8 @@
         <div class="stat"><small>Зібрано ягід</small><strong>${pct}%</strong> <small>(${S.collected} із ${S.total})</small></div>
         <div class="stat"><small>Найдовша серія</small><strong>${S.best}</strong></div>
       </div>
+      ${S.sus ? `<p class="note">Забіг не зараховано: виявлено підозрілу автоматизацію.</p>` : ""}
+      ${S.golden ? `<div class="earned">Золотих ожин: ${S.golden}</div>` : ""}
       <div class="earned">+${S.earned} <span class="coin"></span> малинок</div>`;
   }
 
@@ -1024,7 +1220,7 @@
   function acctLine() {
     if (acc.nick) {
       const nm = esc(acc.rec.nick);
-      if (acc.fb) return `Фермер ${nm} · профіль у хмарі${acc.syncErr ? " (не синхронізовано)" : ""} · <button class="alink" id="logoutBtn">вийти</button>`;
+      if (acc.fb) return `Фермер ${nm} · профіль у хмарі${acc.syncErr ? " (не синхронізовано)" : ""} · <button class="alink" id="importOldBtn">старий прогрес</button> · <button class="alink" id="logoutBtn">вийти</button>`;
       return acc.server
         ? `Фермер ${nm} · профіль на сервері${acc.syncErr ? " (не синхронізовано)" : ""} · <button class="alink" id="logoutBtn">вийти</button>`
         : `Фермер ${nm} · лише в цьому браузері · <button class="alink" id="exportBtn">перенести</button> · <button class="alink" id="logoutBtn">вийти</button>`;
@@ -1043,6 +1239,7 @@
       <input class="nick" id="pass" type="password" maxlength="64" placeholder="Пароль" autocomplete="${reg ? "new-password" : "current-password"}">
       ${reg ? `<input class="nick" id="pass2" type="password" maxlength="64" placeholder="Повтори пароль" autocomplete="new-password">` : ""}
       <p class="note" id="authMsg">${msg ? esc(msg) : ""}</p>
+      <p class="note" style="max-width:34ch">Для захисту від ботів адміністратор бачить твою IP-адресу та відбиток браузера. Бани за IP не видаються.</p>
       <button class="btn play" id="authBtn">${reg ? "Зареєструватися" : "Увійти"}</button>
       <button class="btn small" id="swapBtn">${reg ? "Уже є профіль? Увійти" : "Створити профіль"}</button>
       ${shared ? "" : `<button class="alink" id="importBtn">У мене є код профілю</button>`}
@@ -1064,7 +1261,8 @@
     overlay.querySelectorAll("input").forEach(i => i.onkeydown = e => { if (e.key === "Enter") go(); });
     $("swapBtn").onclick = () => showAuth(reg ? "login" : "register");
     if ($("importBtn")) $("importBtn").onclick = showImport;
-    $("guestBtn").onclick = () => { acc.guest = true; acc.nick = null; acc.rec = null; acc.server = false; save = load(); showMenu(); };
+    $("guestBtn").onclick = () => { acc.guest = true; acc.nick = null; acc.rec = null; acc.server = false; save = load();
+      (fb.ok ? checkBan(null) : Promise.resolve(null)).then(b => { acc.banned = b; showMenu(); }); };
   }
 
   function showImport() {
@@ -1098,6 +1296,326 @@
     $("backBtn").onclick = showMenu;
   }
 
+  // ---- Перенесення старого прогресу у профіль у хмарі ----
+  function parseOld(txt) {
+    txt = txt.trim();
+    let o = null;
+    try { o = JSON.parse(txt); } catch (e) {
+      try { o = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(txt), c => c.charCodeAt(0)))); } catch (e2) {}
+    }
+    if (!o || typeof o !== "object") return null;
+    if (o.users) {
+      const list = Object.values(o.users);
+      o = list.find(u => u && u.nick && acc.nick && u.nick.toLowerCase() === acc.nick) || list[0];
+      if (!o) return null;
+    }
+    if (o.data) o = o.data;
+    return (o && typeof o === "object" && o.up) ? o : null;
+  }
+  function mergeOld(o) {
+    const n = norm(o);
+    save.coins += Math.max(0, Math.floor(Number(n.coins) || 0));
+    UPGRADES.forEach(u => { save.up[u.id] = Math.min(u.costs.length, Math.max(save.up[u.id] || 0, Number(n.up[u.id]) || 0)); });
+    save.best.pct = Math.max(save.best.pct, Number(n.best.pct) || 0);
+    save.best.streak = Math.max(save.best.streak, Number(n.best.streak) || 0);
+    if (n.best.avg != null && (save.best.avg == null || n.best.avg < save.best.avg)) save.best.avg = n.best.avg;
+    save.wins += Number(n.wins) || 0;
+    save.games += Number(n.games) || 0;
+    save.oldImported = true;
+    persist();
+  }
+  function showOldImport() {
+    show(`
+      <h2>Старий прогрес</h2>
+      <p>Встав код профілю зі старої версії (кнопка «перенести» в меню) або вміст збереження гри. Малинки додадуться, а прокачка й рекорди візьмуться найкращі. Це можна зробити лише один раз.</p>
+      <textarea class="code" id="code" rows="5" placeholder="Вставити код"></textarea>
+      <p class="note" id="authMsg"></p>
+      <button class="btn" id="impBtn">Додати прогрес</button>
+      <button class="alink" id="backBtn">Назад</button>`, "scroll");
+    $("impBtn").onclick = () => {
+      if (save.oldImported) { $("authMsg").textContent = "Старий прогрес уже додано до цього профілю."; return; }
+      const o = parseOld($("code").value);
+      if (!o) { $("authMsg").textContent = "Код не підійшов."; return; }
+      mergeOld(o);
+      showMenu();
+    };
+    $("backBtn").onclick = showMenu;
+  }
+
+  // ---------- Відбиток браузера та IP (лише для адміністратора) ----------
+  let fpCache = null, ipP = null;
+  async function getFp() {
+    if (fpCache) return fpCache;
+    let c = "", gl = "";
+    try {
+      const cv = document.createElement("canvas"); cv.width = 200; cv.height = 40;
+      const x = cv.getContext("2d");
+      x.textBaseline = "top"; x.font = "16px Arial"; x.fillStyle = "#f60"; x.fillRect(10, 5, 80, 20);
+      x.fillStyle = "#069"; x.fillText("Bulbulandii fp", 4, 12);
+      c = cv.toDataURL();
+    } catch (e) {}
+    try {
+      const g = document.createElement("canvas").getContext("webgl");
+      const ext = g && g.getExtension("WEBGL_debug_renderer_info");
+      gl = ext ? g.getParameter(ext.UNMASKED_VENDOR_WEBGL) + "|" + g.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
+    } catch (e) {}
+    const raw = [navigator.userAgent, navigator.platform, (navigator.languages || []).join(","),
+      screen.width + "x" + screen.height + "x" + screen.colorDepth, window.devicePixelRatio,
+      Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.hardwareConcurrency, navigator.deviceMemory, c, gl].join("||");
+    fpCache = hex(await crypto.subtle.digest("SHA-256", enc.encode(raw))).slice(0, 32);
+    return fpCache;
+  }
+  async function getIp() {
+    try {
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 4000);
+      const r = await fetch("https://api.ipify.org?format=json", { signal: ctl.signal });
+      clearTimeout(tm);
+      return String((await r.json()).ip || "").slice(0, 64);
+    } catch (e) { return ""; }
+  }
+  // Службовий запис гравця: читає лише адміністратор (правила Firestore). IP не використовується для банів.
+  async function savePriv(extraFlags) {
+    if (!acc.fb || !fb.auth.currentUser) return;
+    try {
+      const F = fb.f, uid = fb.auth.currentUser.uid;
+      const [ip, fp] = await Promise.all([ipP || (ipP = getIp()), getFp()]);
+      const rec = { nick: acc.rec.nick, ip, fp, ua: navigator.userAgent.slice(0, 160), seen: Date.now() };
+      if (extraFlags && extraFlags.length) rec.flags = F.arrayUnion(...extraFlags);
+      await F.setDoc(F.doc(fb.db, "priv", uid), rec, { merge: true });
+    } catch (e) {}
+  }
+  const reportFlags = f => savePriv(f);
+
+  // ---------- Бани: за профілем (uid) і за відбитком браузера ----------
+  async function checkBan(uid) {
+    try {
+      const fp = await getFp();
+      const ids = uid ? [uid, "fp_" + fp] : ["fp_" + fp];
+      for (const id of ids) {
+        const s = await fb.f.getDoc(fb.f.doc(fb.db, "bans", id));
+        if (s.exists()) return { reason: String(s.data().reason || "").slice(0, 200) };
+      }
+    } catch (e) {}
+    return null;
+  }
+  function showBanned() {
+    show(`<h2>Доступ заблоковано</h2><p>Адміністратор заблокував цей профіль або пристрій.</p>
+      ${acc.banned && acc.banned.reason ? `<p class="note">Причина: ${esc(acc.banned.reason)}</p>` : ""}
+      ${acc.nick ? `<button class="btn" id="outBtn">Вийти</button>` : ""}`, "fail");
+    const o = $("outBtn"); if (o) o.onclick = () => { acc.banned = null; logout(); };
+  }
+
+  // ---------- Скрімер: запускає лише адміністратор ----------
+  let scrUnsub = null;
+  function watchScreamer(uid) {
+    try {
+      if (scrUnsub) scrUnsub();
+      scrUnsub = fb.f.onSnapshot(fb.f.doc(fb.db, "screamers", uid), snap => {
+        if (!snap.exists()) return;
+        const ts = Number(snap.data().ts) || 0;
+        let last = 0;
+        try { last = Number(localStorage.getItem("bulb_scr_" + uid)) || 0; } catch (e) {}
+        if (ts > last) { try { localStorage.setItem("bulb_scr_" + uid, String(ts)); } catch (e) {} showScreamer(); }
+      }, () => {});
+    } catch (e) {}
+  }
+  function showScreamer() {
+    if (document.querySelector(".screamer")) return;
+    const d = document.createElement("div");
+    d.className = "screamer";
+    d.innerHTML = `<svg viewBox="0 0 200 200" aria-hidden="true">
+      <ellipse cx="100" cy="104" rx="70" ry="88" fill="#cfd2c4"/>
+      <path d="M52 40L62 62M148 40L138 62M100 18V44M70 150L84 168M130 150L116 168" stroke="#555" stroke-width="2" fill="none"/>
+      <ellipse cx="68" cy="82" rx="22" ry="28" fill="#050505"/><ellipse cx="132" cy="82" rx="22" ry="28" fill="#050505"/>
+      <circle cx="68" cy="86" r="5" fill="#d00"/><circle cx="132" cy="86" r="5" fill="#d00"/>
+      <path d="M46 150Q100 190 154 150Q100 128 46 150Z" fill="#120000"/>
+      <path d="M58 150L64 164L70 148L78 168L86 148L94 170L100 148L106 170L114 148L122 168L130 148L136 164L142 150" fill="#e9e9d8" stroke="#222" stroke-width="1"/>
+    </svg><button type="button" aria-label="Закрити" style="display:none">✕</button>`;
+    document.body.appendChild(d);
+    let ac = null;
+    const onKey = e => { if (e.key === "Escape") close(); };
+    function close() { d.remove(); document.removeEventListener("keydown", onKey); try { if (ac) ac.close(); } catch (e) {} }
+    document.addEventListener("keydown", onKey);
+    const btn = d.querySelector("button");
+    btn.onclick = close;
+    setTimeout(() => { btn.style.display = "block"; }, 1200);   // кнопку «закрити» видно майже одразу, Esc теж працює
+    setTimeout(close, 4200);
+    try {                                                       // помірна гучність, без стробоскопа
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      const t0 = ac.currentTime, g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+      g.connect(ac.destination);
+      const o = ac.createOscillator(); o.type = "sawtooth";
+      o.frequency.setValueAtTime(220, t0); o.frequency.exponentialRampToValueAtTime(40, t0 + 1.4);
+      o.connect(g); o.start(t0); o.stop(t0 + 1.6);
+      const nb = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.8), ac.sampleRate), data = nb.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      const ns = ac.createBufferSource(); ns.buffer = nb; ns.connect(g); ns.start(t0);
+    } catch (e) {}
+  }
+
+  // ---------- Адмін-панель ----------
+  // Справжній захист — правила Firestore: запис/читання службових даних дозволені лише тому, для кого створено документ admins/<uid>.
+  // Пароль нижче — лише додатковий бар'єр в інтерфейсі (у коді зберігається тільки його PBKDF2-хеш).
+  const ADM_SALT = "bulbulandii-admin-v1";
+  const ADM_HASH = "f86c8a67d48c65c7234cb98ed1e922a8e42b90028e9ce1816913e7eb207e7541";
+  let admEl = null, admModal = null, admClicks = [];
+  function adminLock() {
+    if (admEl) { admEl.remove(); admEl = null; }
+    if (admModal) { admModal.remove(); admModal = null; }
+  }
+  function adminTap() {
+    const now = Date.now();
+    admClicks = admClicks.filter(x => now - x < 3000); admClicks.push(now);
+    if (admClicks.length >= 7) { admClicks = []; adminEntry(); }
+  }
+  const admLocked = () => (Number(localStorage.getItem("bulb_adm_lock")) || 0) > Date.now();
+  function admFail() {
+    let n = (Number(localStorage.getItem("bulb_adm_fail")) || 0) + 1;
+    if (n >= 3) {
+      try { localStorage.setItem("bulb_adm_lock", String(Date.now() + 15 * 60 * 1000)); localStorage.setItem("bulb_adm_fail", "0"); } catch (e) {}
+      alert("3 невдалі спроби: доступ заблоковано на 15 хвилин.");
+    } else {
+      try { localStorage.setItem("bulb_adm_fail", String(n)); } catch (e) {}
+      alert("Доступ заборонено.");
+    }
+  }
+  function askPassword() {
+    return new Promise(res => {
+      adminLock();
+      const d = document.createElement("div");
+      d.className = "admin"; d.style.cssText += ";display:flex;align-items:center;justify-content:center";
+      d.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;min-width:240px"><b>Пароль адміністратора</b>
+        <input type="password" id="admPw" autocomplete="off"><div><button id="admOk">Увійти</button><button id="admNo" class="danger">Скасувати</button></div></div>`;
+      document.body.appendChild(d); admModal = d;
+      const done = v => { if (admModal) { admModal.remove(); admModal = null; } res(v); };
+      d.querySelector("#admOk").onclick = () => done(d.querySelector("#admPw").value);
+      d.querySelector("#admNo").onclick = () => done(null);
+      d.querySelector("#admPw").onkeydown = e => { if (e.key === "Enter") done(e.target.value); };
+      d.querySelector("#admPw").focus();
+    });
+  }
+  async function adminEntry() {
+    if (!(acc.fb && fb.ok && fb.auth.currentUser)) { alert("Спочатку увійди в профіль."); return; }
+    if (admLocked()) { alert("Доступ тимчасово заблоковано. Спробуй пізніше."); return; }
+    let isAdm = false, why = "";
+    try {
+      isAdm = (await fb.f.getDoc(fb.f.doc(fb.db, "admins", fb.auth.currentUser.uid))).exists();
+      if (!isAdm) why = "документа admins/<UID> немає";
+    } catch (e) { why = "помилка читання: " + ((e && e.code) || e); }
+    if (!isAdm) console.info("[admin] другий фактор не пройдено:", why, "· UID цього профілю:", fb.auth.currentUser.uid);
+    if (!isAdm) { admFail(); return; }                       // другий фактор: акаунт зі спеціальним записом у Firestore
+    const pw = await askPassword();
+    if (pw === null) return;
+    const h = await hashPass(pw, ADM_SALT, "pbkdf2");
+    if (h !== ADM_HASH) { console.info("[admin] пароль не збігається"); admFail(); return; }
+    try { localStorage.setItem("bulb_adm_fail", "0"); } catch (e) {}
+    renderAdmin();
+  }
+  async function renderAdmin() {
+    adminLock();
+    admEl = document.createElement("div"); admEl.className = "admin";    // у DOM з'являється лише після перевірки
+    admEl.innerHTML = `<h2>Адмін-панель</h2><p>Завантаження…</p>`;
+    document.body.appendChild(admEl);
+    try {
+      const F = fb.f, db = fb.db;
+      const [pl, pr, bn] = await Promise.all(["players", "priv", "bans"].map(c => F.getDocs(F.query(F.collection(db, c), F.limit(500)))));
+      const priv = {}, bans = {}, players = [];
+      pr.forEach(d => { priv[d.id] = d.data(); });
+      bn.forEach(d => { bans[d.id] = d.data(); });
+      pl.forEach(d => players.push({ uid: d.id, ...d.data() }));
+      drawAdmin(players, priv, bans);
+    } catch (e) {
+      admEl.innerHTML = `<h2>Адмін-панель</h2><p>Помилка: ${esc((e && e.code) || e)}</p><button id="admX">Закрити</button>`;
+      admEl.querySelector("#admX").onclick = adminLock;
+    }
+  }
+  function drawAdmin(players, priv, bans) {
+    const F = fb.f, db = fb.db, me = fb.auth.currentUser.uid;
+    const fmt = x => x ? new Date(x).toLocaleString("uk-UA") : "—";
+    players.sort((a, b) => String(a.nick).localeCompare(String(b.nick)));
+    const rows = players.map(p => {
+      const v = priv[p.uid] || {}, d = norm(p.data || {}), b = !!bans[p.uid], u = esc(p.uid);
+      return `<tr><td>${esc(p.nick)}</td><td>${esc(v.ip || "—")}</td><td>${esc((v.fp || "").slice(0, 10) || "—")}</td>
+        <td>${esc((v.flags || []).join(", ") || "—")}</td><td>${d.golden || 0}</td><td>${b ? "🚫" : "ok"}</td>
+        <td><button data-a="${b ? "unban" : "ban"}" data-u="${u}" class="${b ? "" : "danger"}">${b ? "Розбан" : "Бан"}</button>
+        <button data-a="scare" data-u="${u}">Скрімер</button><button data-a="edit" data-u="${u}">Ред.</button></td></tr>`;
+    }).join("");
+    const banRows = Object.entries(bans).filter(([id]) => !id.startsWith("fp_")).map(([id, b]) => {
+      const v = priv[id] || {};
+      return `<tr><td>${esc(b.nick || "—")}</td><td>${esc(v.ip || "—")}</td><td>${esc((b.fp || "").slice(0, 10) || "—")}</td>
+        <td>${esc(b.reason || "—")}</td><td>${fmt(b.ts)}</td><td><button data-a="unban" data-u="${esc(id)}">Розбан</button></td></tr>`;
+    }).join("");
+    admEl.innerHTML = `<h2>Адмін-панель</h2>
+      <p>IP-адреси показані лише для інформації. Банів за IP немає: бани діють за профілем і відбитком браузера.</p>
+      <button id="admX">Закрити</button> <button id="admR">Оновити</button>
+      <h2>Гравці</h2>
+      <input id="admReason" placeholder="Причина бану" style="width:100%;max-width:340px">
+      <div style="overflow:auto"><table><tr><th>Нік</th><th>IP</th><th>Відбиток</th><th>Прапорці</th><th>Золоті</th><th>Бан</th><th>Дії</th></tr>${rows}</table></div>
+      <h2>Заблоковані</h2>
+      ${banRows ? `<div style="overflow:auto"><table><tr><th>Нік</th><th>IP</th><th>Відбиток</th><th>Причина</th><th>Дата</th><th></th></tr>${banRows}</table></div>` : "<p>Нікого.</p>"}
+      <h2>Бан за нікнеймом</h2>
+      <input id="admNick" placeholder="Нік гравця"> <button id="admBanNick" class="danger">Забанити</button>
+      <div id="admEdit"></div>`;
+    const reasonVal = () => (admEl.querySelector("#admReason").value || "порушення правил").slice(0, 200);
+    admEl.querySelector("#admX").onclick = adminLock;
+    admEl.querySelector("#admR").onclick = renderAdmin;
+    const doBan = async uid => {
+      const p = players.find(x => x.uid === uid); if (!p) return;
+      const fp = (priv[uid] || {}).fp || "";
+      const rec = { nick: p.nick, uid, fp, reason: reasonVal(), ts: Date.now() };
+      await F.setDoc(F.doc(db, "bans", uid), rec);
+      if (fp) await F.setDoc(F.doc(db, "bans", "fp_" + fp), rec);
+    };
+    const doUnban = async uid => {
+      const b = bans[uid] || {};
+      await F.deleteDoc(F.doc(db, "bans", uid));
+      const fp = b.fp || (priv[uid] || {}).fp;
+      if (fp) await F.deleteDoc(F.doc(db, "bans", "fp_" + fp));
+    };
+    admEl.querySelector("#admBanNick").onclick = async () => {
+      const n = admEl.querySelector("#admNick").value.trim().toLowerCase();
+      const p = players.find(x => String(x.nick).toLowerCase() === n);
+      if (!p) { alert("Гравця з таким ніком не знайдено."); return; }
+      if (p.uid === me) { alert("Себе банити не можна."); return; }
+      await doBan(p.uid); renderAdmin();
+    };
+    admEl.querySelectorAll("button[data-a]").forEach(btn => btn.onclick = async () => {
+      const a = btn.dataset.a, uid = btn.dataset.u;
+      try {
+        if (a === "ban") { if (uid === me) { alert("Себе банити не можна."); return; } await doBan(uid); renderAdmin(); }
+        else if (a === "unban") { await doUnban(uid); renderAdmin(); }
+        else if (a === "scare") {
+          const p = players.find(x => x.uid === uid);
+          if (confirm("Показати скрімер гравцю " + (p ? p.nick : "") + "?")) {
+            await F.setDoc(F.doc(db, "screamers", uid), { ts: Date.now(), by: me });
+            alert("Скрімер надіслано.");
+          }
+        } else if (a === "edit") editPlayer(uid);
+      } catch (e) { alert("Помилка: " + ((e && e.code) || e)); }
+    });
+    function editPlayer(uid) {
+      const p = players.find(x => x.uid === uid); if (!p) return;
+      const d = norm(p.data || {});
+      const f = (id, label, val) => `<label>${label}<input type="number" id="ed_${id}" value="${Number(val) || 0}"></label>`;
+      admEl.querySelector("#admEdit").innerHTML = `<h2>Статистика: ${esc(p.nick)}</h2><div class="grid2">
+        ${f("coins", "Малинки", d.coins)}${f("golden", "Золоті ожини", d.golden)}${f("wins", "Перемоги", d.wins)}${f("games", "Ігри", d.games)}
+        ${f("pct", "Рекорд врожаю %", d.best.pct)}${f("streak", "Рекорд серії", d.best.streak)}
+        ${UPGRADES.map(u => f("up_" + u.id, "Дерево: " + u.name + " (0–" + u.costs.length + ")", d.up[u.id])).join("")}
+        </div><button id="edSave">Зберегти</button>`;
+      const num = (id, lo, hi) => Math.min(hi, Math.max(lo, Math.floor(Number(admEl.querySelector("#ed_" + id).value) || 0)));
+      admEl.querySelector("#edSave").onclick = async () => {
+        const upd = { "data.coins": num("coins", 0, 1e7), "data.golden": num("golden", 0, 1e6), "data.wins": num("wins", 0, 1e6),
+          "data.games": num("games", 0, 1e6), "data.best.pct": num("pct", 0, 100), "data.best.streak": num("streak", 0, 1e6) };
+        UPGRADES.forEach(u => { upd["data.up." + u.id] = num("up_" + u.id, 0, u.costs.length); });
+        try { await F.updateDoc(F.doc(db, "players", uid), upd); alert("Збережено. Гравець побачить зміни після повторного входу."); renderAdmin(); }
+        catch (e) { alert("Помилка: " + ((e && e.code) || e)); }
+      };
+    }
+  }
+
   async function showRank() {
     show(`<h2>Рейтинг</h2><p class="note">Завантажуємо…</p><button class="alink" id="backBtn">Назад</button>`, "scroll");
     $("backBtn").onclick = showMenu;
@@ -1117,12 +1635,12 @@
     if (err) notes.push(err);
     const medal = i => ["🥇", "🥈", "🥉"][i] || (i + 1);
     const body = rows.map((r, i) => `<tr class="${r.id === data.me ? "me" : ""}"><td>${medal(i)}</td><td>${esc(r.nick || "—")}</td>`
-      + `<td>${r.wins ? r.pct + "%" : "—"}</td><td>${r.avg == null ? "—" : r.avg + " мс"}</td><td>${r.streak || 0}</td></tr>`).join("");
+      + `<td>${r.wins ? r.pct + "%" : "—"}</td><td>${r.avg == null ? "—" : r.avg + " мс"}</td><td>${r.streak || 0}</td><td>${r.golden || 0}</td></tr>`).join("");
     show(`
       <div class="help">
         <h2>Рейтинг</h2>
         ${rows.length
-          ? `<table class="tbl"><tr><th>#</th><th>Гравець</th><th>Врожай</th><th>Реакція</th><th>Серія</th></tr>${body}</table>`
+          ? `<table class="tbl"><tr><th>#</th><th>Гравець</th><th>Врожай</th><th>Реакція</th><th>Серія</th><th>Золоті</th></tr>${body}</table>`
           : `<p class="note">Поки що нікого. Пройди гру — і потрапиш у рейтинг!</p>`}
         <p class="note">${notes.map(esc).join(" ")}</p>
         <button class="btn" id="backBtn">Назад</button>
@@ -1130,12 +1648,28 @@
     $("backBtn").onclick = showMenu;
   }
 
+  // Слухачі: рух курсора, тривалість натискання, перемикання вкладки
+  field.addEventListener("pointermove", e => {
+    if (e.isTrusted && S && S.active !== null && S.moves.length < 400) S.moves.push([e.clientX, e.clientY, performance.now()]);
+  });
+  field.addEventListener("pointerup", e => {
+    if (!e.isTrusted || !S || S.downT == null) return;
+    const d = performance.now() - S.downT; S.downT = null;
+    if (d < 800) S.holds.push(d);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) return;
+    adminLock();                                           // адмінка закривається при втраті фокусу вкладки
+    if (S && S.active !== null && !S.busy) burst(S.active, null, false);   // у фоні ягода лопається
+  });
+
   // Старт: перевіряємо сервер (до 6 с), автоматично входимо в профіль, який був активним
   (async () => {
     show(`<h2>Заходимо на плантацію…</h2><p>Перевіряємо сервер.</p>`);
     await Promise.race([Promise.all([initServer(), initFirebase()]), new Promise(r => setTimeout(r, 8000))]);
     try {
       if (fb.ok && fb.auth.currentUser) await fbEnter(fb.auth.currentUser);
+      if (fb.ok && !acc.banned) acc.banned = await checkBan(null);
       const k = fb.ok ? null : accounts.current;
       if (k) {
         const rec = await getAcct(k);
