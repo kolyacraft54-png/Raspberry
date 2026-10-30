@@ -1500,17 +1500,13 @@
   async function adminEntry() {
     if (!(acc.fb && fb.ok && fb.auth.currentUser)) { alert("Спочатку увійди в профіль."); return; }
     if (admLocked()) { alert("Доступ тимчасово заблоковано. Спробуй пізніше."); return; }
-    let isAdm = false, why = "";
-    try {
-      isAdm = (await fb.f.getDoc(fb.f.doc(fb.db, "admins", fb.auth.currentUser.uid))).exists();
-      if (!isAdm) why = "документа admins/<UID> немає";
-    } catch (e) { why = "помилка читання: " + ((e && e.code) || e); }
-    if (!isAdm) console.info("[admin] другий фактор не пройдено:", why, "· UID цього профілю:", fb.auth.currentUser.uid);
+    let isAdm = false;
+    try { isAdm = (await fb.f.getDoc(fb.f.doc(fb.db, "admins", fb.auth.currentUser.uid))).exists(); } catch (e) {}
     if (!isAdm) { admFail(); return; }                       // другий фактор: акаунт зі спеціальним записом у Firestore
     const pw = await askPassword();
     if (pw === null) return;
     const h = await hashPass(pw, ADM_SALT, "pbkdf2");
-    if (h !== ADM_HASH) { console.info("[admin] пароль не збігається"); admFail(); return; }
+    if (h !== ADM_HASH) { admFail(); return; }
     try { localStorage.setItem("bulb_adm_fail", "0"); } catch (e) {}
     renderAdmin();
   }
